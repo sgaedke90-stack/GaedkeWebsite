@@ -1,6 +1,7 @@
 {
-  "installCommand": "npm ci --prefix web",
+  "root": "web",
+  "installCommand": "npm ci",
   "builds": [
-    { "src": "web/package.json", "use": "@vercel/next" }
+    { "src": "package.json", "use": "@vercel/next" }
   ]
 }
