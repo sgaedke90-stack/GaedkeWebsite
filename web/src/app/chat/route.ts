@@ -62,8 +62,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ message: text });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Error:", error);
-    return NextResponse.json({ message: "I'm having trouble connecting right now. Please text Sean at (763) 318-0605." });
+    // DEBUG MODE: Return the actual error message so we can fix it
+    return NextResponse.json({ message: `SYSTEM ERROR: ${error.message}` });
   }
 }
