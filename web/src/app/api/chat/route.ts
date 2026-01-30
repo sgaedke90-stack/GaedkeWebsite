@@ -24,12 +24,12 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      // Using the specific '001' version to prevent 404 errors
-      model: "gemini-1.5-flash-001",
-      systemInstruction: SYSTEM_PROMPT, 
-      generationConfig: { temperature: 0.7, maxOutputTokens: 500 }, 
+      // CHANGED TO 'LATEST' TO FIX 404 ERROR
+      model: "gemini-1.5-flash-latest", 
+      systemInstruction: SYSTEM_PROMPT,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
     });
-
+    
     const body = await req.json();
     const messages = Array.isArray(body?.messages) ? body.messages : [];
 
