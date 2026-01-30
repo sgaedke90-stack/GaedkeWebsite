@@ -1,20 +1,19 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export const runtime = "nodejs"; 
+export const runtime = "nodejs";
 
-// FORCE UPDATE: v1.1 (This comment triggers the rebuild)
 const SYSTEM_PROMPT = `
 You are Sean Gaedke, owner of Gaedke Construction in MN.
-You are a friendly, helpful General Contractor.
-Chat naturally. If asked for a price, give a rough range or ask for photos.
-Be helpful and easy to talk to.
+You are a friendly, helpful General Contractor who can handle any home improvement project.
+Chat naturally with the customer. 
+If they ask for a price, give a rough range if you can, or ask for photos to be accurate.
+Your main goal is just to be helpful and easy to talk to.
 `;
 
 export async function POST(req: Request) {
   try {
     const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-    
     if (!apiKey) {
       return NextResponse.json(
         { message: "SYSTEM ERROR: GOOGLE_API_KEY is missing." },
@@ -24,27 +23,29 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      // CHANGED TO 'LATEST' TO FIX 404 ERROR
-      model: "gemini-1.5-flash-latest", 
+      model: "gemini-1.5-flash", // <--- BACK TO THE STANDARD NAME
       systemInstruction: SYSTEM_PROMPT,
       generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
     });
-    
-    const body = await req.json();
-    const messages = Array.isArray(body?.messages) ? body.messages : [];
 
-    // --- CRASH FIX: Remove initial bot messages ---
-    let historyMessages = messages.slice(0, -1);
-    while (historyMessages.length > 0 && historyMessages[0].role === 'assistant') {
-        historyMessages.shift();
+    const body = await req.json();
+    const rawMessages = Array.isArray(body?.messages) ? body.messages : [];
+
+    // --- HISTORY FIX (Keep this!) ---
+    const cleanedMessages = rawMessages.filter(
+      (m: any) => m.role === "user" || m.role === "assistant"
+    );
+
+    while (cleanedMessages.length && cleanedMessages[0].role !== "user") {
+      cleanedMessages.shift();
     }
 
-    const history = historyMessages.map((m: any) => ({
+    const history = cleanedMessages.slice(0, -1).map((m: any) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: String(m.content ?? "") }],
     }));
 
-    const lastMessage = messages[messages.length - 1]?.content ?? "";
+    const lastMessage = cleanedMessages[cleanedMessages.length - 1]?.content ?? "";
 
     const chat = model.startChat({ history });
     const result = await chat.sendMessage(String(lastMessage));
