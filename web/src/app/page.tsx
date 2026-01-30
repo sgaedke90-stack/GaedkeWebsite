@@ -10,7 +10,7 @@ export default function Home() {
       <nav className="fixed w-full z-50 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-amber-500 rounded flex items-center justify-center font-serif font-bold text-black text-xl">G</div>
+            <Image src="/images/logo.jpg" alt="Gaedke Construction" width={40} height={40} className="w-10 h-10 rounded object-cover" />
             <span className="font-serif text-xl font-bold tracking-tight text-white">Gaedke<span className="text-amber-500">Construction</span></span>
           </div>
           

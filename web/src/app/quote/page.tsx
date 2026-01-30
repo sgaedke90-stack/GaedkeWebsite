@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
+import Image from "next/image";
 import { Send, ArrowLeft, Bot, User, Loader2, FileVideo, FileText, Image as ImageIcon, Camera, FolderOpen } from "lucide-react";
 import Link from "next/link";
 import emailjs from '@emailjs/browser';
@@ -157,17 +158,8 @@ const handleSend = async (e?: React.FormEvent) => {
         
         {/* THE CODE-GENERATED LOGO (Black, Gold, Blue) */}
         <div className="flex items-center gap-3">
-             {/* This box mimics your logo using CSS borders and colors */}
-             <div className="w-10 h-10 bg-black border-2 border-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20">
-                <span className="text-amber-500 font-serif font-black text-xl">G</span>
-             </div>
-             
-             <div className="flex flex-col">
-                <span className="text-white font-bold leading-tight tracking-wide">GAEDKE</span>
-                <span className="text-[10px] text-zinc-400 font-medium">CONSTRUCTION LLC</span>
-             </div>
-        </div>
-        
+             {/* Use uploaded logo image */}
+             <Image src="/images/logo.jpg" alt="Gaedke Construction" width={40} height={40} className="rounded-lg object-cover" />
         <div className="w-8"></div>
       </div>
 
