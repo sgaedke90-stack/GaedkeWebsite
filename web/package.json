@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "npm ci --prefer-offline --no-audit --progress=false && npm run build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -15,7 +16,7 @@
     "ai": "^6.0.62",
     "autoprefixer": "^10.4.23",
     "lucide-react": "^0.469.0",
-    "next": "^14.2.3",
+    "next": "^16.1.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -24,10 +25,10 @@
     "@types/node": "^20.19.30",
     "@types/react": "^18.3.2",
     "@types/react-dom": "^18.3.0",
-    "eslint": "^8.56.0",
-    "eslint-config-next": "14.2.3",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^16.1.6",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3"
   }
-}
+} 
