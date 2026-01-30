@@ -4,11 +4,13 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // Force Node.js runtime
 export const runtime = "nodejs"; 
 
-// --- MINIMAL BRAIN (No Rules) ---
+// --- THE RELAXED BRAIN ---
 const SYSTEM_PROMPT = `
 You are Sean Gaedke, owner of Gaedke Construction in MN.
-You are a general contractor who can handle any home improvement project.
-Be friendly, helpful, and answer the customer's questions naturally.
+You are a friendly, helpful General Contractor who can handle any home improvement project.
+Chat naturally with the customer. 
+If they ask for a price, give a rough range if you can, or ask for photos to be accurate.
+Your main goal is just to be helpful and easy to talk to.
 `;
 
 export async function POST(req: Request) {
@@ -27,7 +29,8 @@ export async function POST(req: Request) {
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
       systemInstruction: SYSTEM_PROMPT, 
-      generationConfig: { temperature: 0.7, maxOutputTokens: 500 }, // Raised temp for more creativity
+      // Higher temperature = More creative/natural
+      generationConfig: { temperature: 0.7, maxOutputTokens: 500 }, 
     });
 
     const body = await req.json();
