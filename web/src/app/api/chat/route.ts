@@ -44,9 +44,30 @@ export async function POST(req: Request) {
         // Robust extraction of returned text (handle different response shapes)
         const text = (result as any).text ?? (result as any).output?.[0]?.content?.[0]?.text ?? JSON.stringify(result);
 
-        // Detect whether this response looks like a finished quote so clients can trigger email sends
+        // Detect whether this response looks like a finished quote so we can send server-side email
         const quoteIndicatorRegex = /(\$\s*\d{1,3}[\d,\.]*|\b(total|estimate|quotation|quote|subtotal|grand total|price|estimated)\b)/i;
         const quoteComplete = quoteIndicatorRegex.test(String(text));
+
+        if (quoteComplete) {
+          // Build summary/transcript here and send via internal helper
+          const clientName = normalized[1]?.role === 'user' ? normalized[1].content : 'Unknown Client';
+          const phoneMatch = normalized.map(m => m.content).join(' ').match(/(\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4})/);
+          const clientPhone = phoneMatch ? phoneMatch[0] : 'Not detected';
+          const dateKeywords = ["immediately", "month", "week", "year", "asap", "spring", "summer", "fall", "winter"];
+          const timeline = normalized.find(m => m.role === 'user' && dateKeywords.some(k => m.content.toLowerCase().includes(k)))?.content || 'TBD';
+
+          const summary = `========================================\n🚀 NEW LEAD: PROJECT BRIEF\n========================================\n👤 NAME:       ${clientName}\n📱 PHONE:      ${clientPhone}\n📅 START DATE: ${timeline}\n`;
+          const transcript = normalized.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+
+          try {
+            // dynamic import so we don't import nodemailer in environments that don't need it
+            const { sendLead } = await import('../../../../lib/sendLead');
+            await sendLead({ summary, transcript, model: modelId, source: 'chat-api' });
+            return NextResponse.json({ message: text, model: modelId, quoteComplete: true, leadSent: true });
+          } catch (err: any) {
+            return NextResponse.json({ message: text, model: modelId, quoteComplete: true, leadSent: false, leadError: err.message });
+          }
+        }
 
         return NextResponse.json({ message: text, model: modelId, quoteComplete });
       } catch (err: any) {
