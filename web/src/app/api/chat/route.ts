@@ -10,6 +10,9 @@ const GOOGLE_MODEL_FALLBACKS = [
   "gemini-1.5-flash-latest",
   "gemini-1.5",
   "gemini-1.0",
+  "gemini-1.5-pro",
+  "chat-bison",
+  "text-bison",
 ];
 
 export async function POST(req: Request) {
