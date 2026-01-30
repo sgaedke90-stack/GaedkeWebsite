@@ -23,7 +23,8 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash", // <--- BACK TO THE STANDARD NAME
+      // FIX: Use the specific stable version number
+      model: "gemini-1.5-flash-001", 
       systemInstruction: SYSTEM_PROMPT,
       generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
     });
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const rawMessages = Array.isArray(body?.messages) ? body.messages : [];
 
-    // --- HISTORY FIX (Keep this!) ---
+    // --- HISTORY FIX ---
     const cleanedMessages = rawMessages.filter(
       (m: any) => m.role === "user" || m.role === "assistant"
     );
