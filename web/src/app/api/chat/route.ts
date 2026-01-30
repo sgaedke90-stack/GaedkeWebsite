@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { createGoogleGenerativeAI } from "@ai-sdk/google"; 
-import { generateText } from "ai";
+import { GoogleGenAI } from "@google/genai";
 
 export const runtime = "nodejs";
 
 const SYSTEM_PROMPT = `You are Sean Gaedke, owner of Gaedke Construction in MN.`;
 
-const GOOGLE_MODEL_FALLBACKS = [
+const MODEL_FALLBACKS = [
+  "gemini-3-flash-preview",
   "gemini-1.5-flash-latest",
   "gemini-1.5",
   "gemini-1.0",
@@ -17,11 +17,10 @@ const GOOGLE_MODEL_FALLBACKS = [
 
 export async function POST(req: Request) {
   try {
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) return NextResponse.json({ error: "Missing API Key" }, { status: 500 });
 
-    // ✅ This factory pattern fixes the "Expected 1 arguments" error
-    const google = createGoogleGenerativeAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey });
 
     const body = await req.json();
     const messages = Array.isArray(body?.messages) ? body.messages : [];
@@ -30,24 +29,26 @@ export async function POST(req: Request) {
       content: String(m.content),
     }));
 
-    // Try a few model ids in order until one works in the current environment
+    // Compose a single content string for generateContent
+    const contents = [SYSTEM_PROMPT, ...normalized.map(m => `${m.role.toUpperCase()}: ${m.content}`)].join("\n\n");
+
     let lastError: any = null;
-    for (const modelId of GOOGLE_MODEL_FALLBACKS) {
+    for (const modelId of MODEL_FALLBACKS) {
       try {
-        const result = await generateText({
-          model: google(modelId),
-          system: SYSTEM_PROMPT,
-          messages: normalized,
+        const result = await ai.models.generateContent({
+          model: modelId,
+          contents,
         });
-        return NextResponse.json({ message: result.text, model: modelId });
+
+        // Robust extraction of returned text (handle different response shapes)
+        const text = (result as any).text ?? (result as any).output?.[0]?.content?.[0]?.text ?? JSON.stringify(result);
+        return NextResponse.json({ message: text, model: modelId });
       } catch (err: any) {
         lastError = err;
-        // If it looks like the model isn't available, try the next one
         const msg = String(err?.message || "").toLowerCase();
         if (msg.includes("not found") || msg.includes("not supported") || msg.includes("generatecontent")) {
           continue;
         }
-        // Unknown error — rethrow
         throw err;
       }
     }
