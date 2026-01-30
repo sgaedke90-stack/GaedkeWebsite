@@ -75,43 +75,40 @@ FULL CHAT TRANSCRIPT BELOW:
     }
   };
 
-  const handleSend = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!input.trim()) return;
-
-    const newMessages = [...messages, { role: 'user', content: input } as Message];
-    setMessages(newMessages);
-    setInput('');
-    setIsTyping(true);
-
-    try {
-      const apiMessages = newMessages.map(m => ({
-        role: m.role === 'bot' ? 'assistant' : 'user',
-        content: m.content
-      }));
-
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages }),
-      });
-
-      const data = await response.json();
-      setIsTyping(false);
-      
-      if (data.message) {
-        setMessages(prev => [...prev, { role: 'bot', content: data.message }]);
-        if (data.message.includes('$')) {
-             sendToOwner();
-        }
-      }
-    } catch (error) {
-      console.error(error);
-      setIsTyping(false);
-      setMessages(prev => [...prev, { role: 'bot', content: "I'm having trouble connecting. Please text Sean directly at (763) 318-0605." }]);
+const handleSend = async (e?: React.FormEvent) => {
+  e?.preventDefault();
+  if (isTyping || !input.trim()) return;
+  const newMessages = [...messages, { role: 'user', content: input } as Message];
+  setMessages(newMessages);
+  setInput('');
+  setIsTyping(true);
+  try {
+    const apiMessages = newMessages.map(m => ({
+      role: m.role === 'bot' ? 'assistant' : 'user',
+      content: m.content,
+    }));
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: apiMessages }),
+    });
+    const data = await response.json();
+    setIsTyping(false);
+    if (response.ok && data.message) {
+      setMessages(prev => [...prev, { role: 'bot', content: data.message }]);
+      if (data.message.includes('$')) sendToOwner();
+    } else {
+      throw new Error(data.error || "Unexpected server response");
     }
-  };
-
+  } catch (error: any) {
+    console.error("Chat error:", error);
+    setIsTyping(false);
+    setMessages(prev => [
+      ...prev,
+      { role: 'bot', content: "I'm having trouble connecting. Please text Sean directly at (763) 318‑0605." },
+    ]);
+  }
+};
   const handleFileUpload = async (e: any, specificType: 'camera' | 'image' | 'file') => {
     const file = e.target.files[0];
     if (!file) return;

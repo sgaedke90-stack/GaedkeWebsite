@@ -1,53 +1,117 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+
+import { google } from "@ai-sdk/google";
+
+import { generateText } from "ai";
+
+
 
 export const runtime = "nodejs";
 
+
+
 const SYSTEM_PROMPT = `
-You are Sean Gaedke, owner of Gaedke Construction in Minnesota.
-You are friendly, professional, and helpful.
-Answer clearly and naturally like a real contractor.
+
+You are Sean Gaedke, owner of Gaedke Construction in MN.
+
+You are a friendly, helpful General Contractor.
+
+If they ask for pricing, give a rough range or ask for photos.
+
 `;
 
+
+
 export async function POST(req: Request) {
-  try {
-    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Missing GOOGLE_API_KEY" },
-        { status: 500 }
-      );
-    }
 
-    const body = await req.json();
-    const messages = body.messages || [];
+try {
 
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json(
-        { error: "No messages provided" },
-        { status: 400 }
-      );
-    }
+const apiKey =
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash", 
-      systemInstruction: SYSTEM_PROMPT,
-    });
+process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
 
-    // SIMPLIFIED: Just grab the last message to avoid "Role Order" crashes.
-    const lastUserMessage = messages[messages.length - 1]?.content ?? "";
+process.env.GOOGLE_API_KEY;
 
-    const result = await model.generateContent(lastUserMessage);
-    const text = result.response.text();
 
-    return NextResponse.json({ message: text });
 
-  } catch (error: any) {
-    console.error("Chat API Error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal error" },
-      { status: 500 }
-    );
-  }
+if (!apiKey) {
+
+return NextResponse.json(
+
+{ error: "Missing GOOGLE_GENERATIVE_AI_API_KEY" },
+
+{ status: 500 }
+
+);
+
+}
+
+
+
+const body = await req.json();
+
+const messages = Array.isArray(body?.messages) ? body.messages : [];
+
+
+
+// Gemini requires first message to be from user
+
+const normalized = messages
+
+.filter((m: any) => m?.role && m?.content)
+
+.map((m: any) => ({
+
+role: m.role === "assistant" ? "assistant" : "user",
+
+content: String(m.content),
+
+}));
+
+
+
+while (normalized.length && normalized[0].role !== "user") {
+
+normalized.shift();
+
+}
+
+
+
+if (!normalized.length) {
+
+normalized.push({ role: "user", content: "Hello" });
+
+}
+
+
+
+const result = await generateText({
+
+model: google("gemini-1.5-flash-latest"),
+
+system: SYSTEM_PROMPT,
+
+messages: normalized,
+
+});
+
+
+
+return NextResponse.json({ message: result.text });
+
+} catch (err: any) {
+
+console.error("Chat API Error:", err);
+
+return NextResponse.json(
+
+{ error: err.message || "Internal error" },
+
+{ status: 500 }
+
+);
+
+}
+
 }
