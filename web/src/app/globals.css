@@ -1,26 +1,3 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-:root {
-  /* Your Brand Colors */
-  --brand-gold: #d4af37;
-  --brand-blue: #003366;
-  
-  --foreground-rgb: 23, 23, 23;
-  --background-rgb: 255, 255, 255;
-}
-
-body {
-  color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
-}
-
-/* This ensures your chat buttons and accents use your gold */
-.bg-brand-gold {
-  background-color: var(--brand-gold);
-}
-
-.text-brand-blue {
-  color: var(--brand-blue);
-}
