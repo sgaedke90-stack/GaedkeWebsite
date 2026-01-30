@@ -22,9 +22,9 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Using 'latest' to avoid 404 errors
+    // ✅ CORRECTED MODEL NAME: No suffixes, just the standard ID.
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash-latest",
+      model: "gemini-1.5-flash", 
       systemInstruction: SYSTEM_PROMPT,
       generationConfig: {
         temperature: 0.7,
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const messages = body.messages ?? [];
 
-    // SAFE MODE: Just grab the last thing the user said.
+    // SAFE MODE: Grab the last user message to avoid history errors
     const lastUserMessage = messages
       .filter((m: any) => m.role === "user")
       .slice(-1)[0]?.content;
@@ -47,11 +47,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Generate the response
     const result = await model.generateContent(lastUserMessage);
     const text = result.response.text();
 
-    // ✅ THE FIX: Return standard JSON (No streaming)
     return NextResponse.json({ message: text }, { status: 200 });
 
   } catch (err: any) {
