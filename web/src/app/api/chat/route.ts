@@ -24,13 +24,14 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const messages = Array.isArray(body?.messages) ? body.messages : [];
-    const normalized = messages.map((m: any) => ({
+    type ChatMessage = { role: string; content: string };
+    const normalized: ChatMessage[] = messages.map((m: any) => ({
       role: m.role === "assistant" ? "assistant" : "user",
       content: String(m.content),
     }));
 
     // Compose a single content string for generateContent
-    const contents = [SYSTEM_PROMPT, ...normalized.map(m => `${m.role.toUpperCase()}: ${m.content}`)].join("\n\n");
+    const contents = [SYSTEM_PROMPT, ...normalized.map((m: ChatMessage) => `${m.role.toUpperCase()}: ${m.content}`)].join("\n\n");
 
     let lastError: any = null;
     for (const modelId of MODEL_FALLBACKS) {
