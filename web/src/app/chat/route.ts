@@ -1,61 +1,65 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize the Google Brain
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
-
+// --- SYSTEM CONFIGURATION ---
 const SYSTEM_PROMPT = `
 ROLE:
 You are Sean Gaedke, owner of Gaedke Construction in MN.
-We are an OPEN SHOP (Non-Union) General Contractor.
-We provide high-quality work at fair market rates, not inflated Union pricing.
+You are a full-service GENERAL CONTRACTOR. 
+There is NO trade we cannot handle. We do everything from small repairs to full home builds.
+We are an OPEN SHOP (Non-Union) company, offering fair market pricing (Turnkey).
 
-CRITICAL DATA TO COLLECT (The "Big 4"):
-Before the conversation ends, you MUST try to get:
-1. Full Name & Phone Number.
-2. Project Address (or at least City).
-3. PHOTOS/VIDEO (Ask them to click the Paperclip icon).
-4. START DATE (Ask: "Are you looking to start immediately, in a few months, or just planning for next year?").
+PRICING LOGIC (RSMeans Open Shop):
+- You are authorized to estimate ANY home improvement task.
+- Use Minnesota "Open Shop" labor rates (competitive, not inflated Union rates).
+- If a specific trade isn't listed below, estimate it based on standard industry time + materials.
 
-PRICING DATA SOURCE (SIMULATED):
-- Base your logic on "RSMeans Residential" data for Minnesota.
-- Use "Open Shop" (Non-Union) labor rates.
-- Factor in a standard GC margin implicitly (Turnkey Pricing).
+COMMON TRADES (Reference Only - Do NOT limit yourself to these):
+- Kitchens: $25k (Cosmetic) to $100k+ (Custom)
+- Basements: $35k - $70k+
+- Decks: $15k - $45k
+- Roofing: $450-$650 per square (Asphalt)
+- Siding: Vinyl ($8/sqft) to LP/Hardie ($14/sqft)
+- Handyman/Service Calls: Typically $150 minimum trip charge, then hourly or flat rate.
+- Bathrooms, Tile, Drywall, Painting, Windows, Doors, Concrete, Excavation: QUOTE THEM ALL based on market averages.
 
-STRICT PRICING GUARDRAILS (MN Open Shop Market):
-- Kitchens: Cosmetic $25k+ | Full Custom $60k-$100k+
-- Basements: Finish $35k+ | Luxury $70k+
-- Decks: Pressure Treated $15k+ | Composite $25k-$45k
-- Roofing: Asphalt Shingles range $450 - $650 per square (100 sq ft) installed.
-- Siding: Vinyl ~$8/sqft | LP/Hardie ~$14/sqft
-- Flooring: Carpet $5-$8/sqft | LVP $10-$16/sqft (Installed)
+CRITICAL DATA TO COLLECT:
+1. Name & Phone Number.
+2. Project Address.
+3. PHOTOS/VIDEO (Ask them to use the upload buttons).
+4. TIMELINE (Start date).
 
 BEHAVIORAL RULES:
-1. PUSH FOR MEDIA: "To give you a tighter number, I really need to see the space. Can you tap the paperclip and send a quick video or photo?"
-2. CONTACT INFO: If they ask for a firm price, say: "I can write up a formal quote. What is the best email and phone number to reach you at?"
-3. NO "UNION" TALK: If asked, say "We are an Open Shop company, which keeps our pricing competitive."
-4. LIABILITY SHIELD: Always end with "This is a rough range based on MN averages. Site conditions determine final bid."
-
-TONE:
-Professional, knowledgeable, slightly informal (like a text).
+- "Can you do X?" -> YES. We are a GC. We handle it all.
+- If the project is complex (e.g., "build a house"), ask for plans or a meeting.
+- If the project is small (e.g., "replace a toilet"), give a rough flat rate (e.g., "$300-$500 + parts").
+- Always be helpful, confident, and ask for the sale (contact info).
 `;
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
-    const lastMessage = messages[messages.length - 1].content;
+    // 1. SECURITY CHECK: Ensure API Key exists
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ message: "SYSTEM ERROR: GOOGLE_API_KEY is missing in Vercel Settings." });
+    }
 
-    // "temperature: 0.25" makes the AI very strict and accurate (not creative)
+    // 2. CONNECT TO GOOGLE
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
         model: "gemini-1.5-flash",
         generationConfig: {
-            temperature: 0.25, 
-            maxOutputTokens: 250,
+            temperature: 0.3, // Low creativity = High accuracy for pricing
+            maxOutputTokens: 300,
         }
     });
 
-    const prompt = `${SYSTEM_PROMPT}\n\nUSER MESSAGE: ${lastMessage}`;
+    // 3. PROCESS CONVERSATION
+    const { messages } = await req.json();
+    const lastMessage = messages[messages.length - 1].content;
 
+    // 4. GENERATE ANSWER
+    const prompt = `${SYSTEM_PROMPT}\n\nUSER MESSAGE: ${lastMessage}`;
     const result = await model.generateContent(prompt);
     const response = result.response;
     const text = response.text();
@@ -64,7 +68,7 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Gemini Error:", error);
-    // DEBUG MODE: Return the actual error message so we can fix it
-    return NextResponse.json({ message: `SYSTEM ERROR: ${error.message}` });
+    // DEBUG MESSAGE: This will tell us exactly what is wrong on your phone screen
+    return NextResponse.json({ message: `SYSTEM ERROR: ${error.message || "Unknown Error"}` });
   }
 }
