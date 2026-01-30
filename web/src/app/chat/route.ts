@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// IMPORTANT: This forces Vercel to use the powerful server, not the "Edge" version
+// Force Node.js runtime (Important for API keys and Vercel)
 export const runtime = "nodejs"; 
 
 const SYSTEM_PROMPT = `
@@ -40,7 +40,6 @@ BEHAVIORAL RULES:
 
 export async function POST(req: Request) {
   try {
-    // Check both possible names for the API key just in case
     const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
     
     if (!apiKey) {
@@ -51,22 +50,23 @@ export async function POST(req: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
+    
+    // FIX 1: Pass SYSTEM_PROMPT here, not in the history array
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
+      systemInstruction: SYSTEM_PROMPT, 
       generationConfig: { temperature: 0.3, maxOutputTokens: 350 },
     });
 
     const body = await req.json();
     const messages = Array.isArray(body?.messages) ? body.messages : [];
 
-    // This converts the chat history so the bot remembers what you just said
-    const history = [
-      { role: "user", parts: [{ text: SYSTEM_PROMPT }] },
-      ...messages.slice(0, -1).map((m: any) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: String(m.content ?? "") }],
-      })),
-    ];
+    // FIX 2: Only include the actual previous conversation in history
+    // (We remove the last message because we send that in .sendMessage)
+    const history = messages.slice(0, -1).map((m: any) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: String(m.content ?? "") }],
+    }));
 
     const lastMessage = messages[messages.length - 1]?.content ?? "";
 
@@ -78,7 +78,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Gemini Error:", error);
-    // DEBUG MODE: Return the specific error so we can see it on the phone
     return NextResponse.json(
       { message: `SYSTEM ERROR: ${error?.message || "Unknown Error"}` },
       { status: 500 }
