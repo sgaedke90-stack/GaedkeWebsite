@@ -10,9 +10,13 @@ export default function Home() {
       <nav className="fixed w-full z-50 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Image src="/images/logo.jpg" alt="Gaedke Construction" width={40} height={40} className="w-10 h-10 rounded object-cover" />
             <span className="font-serif text-xl font-bold tracking-tight text-white">Gaedke<span className="text-amber-500">Construction</span></span>
           </div>
+
+          {/* Centered logo (clickable) */}
+          <Link href="/" className="absolute left-1/2 top-0 transform -translate-x-1/2 h-20 flex items-center justify-center">
+            <Image src="/images/logo.jpg" alt="Gaedke Construction" width={56} height={56} className="rounded-full object-cover border-2 border-amber-500" />
+          </Link>
           
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
             <a href="#services" className="hover:text-amber-500 transition-colors">Services</a>
