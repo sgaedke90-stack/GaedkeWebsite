@@ -1,20 +1,26 @@
-@import "tailwindcss";
-
-@theme inline {
-  --color-brand-gold: #d4af37;
-  --color-brand-blue: #003366;
-  
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Your Brand Colors */
+  --brand-gold: #d4af37;
+  --brand-blue: #003366;
+  
+  --foreground-rgb: 23, 23, 23;
+  --background-rgb: 255, 255, 255;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+/* This ensures your chat buttons and accents use your gold */
+.bg-brand-gold {
+  background-color: var(--brand-gold);
+}
+
+.text-brand-blue {
+  color: var(--brand-blue);
 }
