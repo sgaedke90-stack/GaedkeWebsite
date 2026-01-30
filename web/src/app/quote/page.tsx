@@ -65,7 +65,7 @@ FULL CHAT TRANSCRIPT BELOW:
     try {
         await emailjs.send(
             "service_y0yrfpq",       
-            "template_52dvwec",      
+            "template_mwq9enc",      
             templateParams,
             "1zDp7GlNHepyKQ7xf"      
         );
