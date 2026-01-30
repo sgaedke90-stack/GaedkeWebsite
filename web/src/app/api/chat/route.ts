@@ -5,10 +5,9 @@ export const runtime = "nodejs";
 
 const SYSTEM_PROMPT = `
 You are Sean Gaedke, owner of Gaedke Construction in MN.
-You are a friendly, helpful General Contractor who can handle any home improvement project.
-Chat naturally with the customer. 
-If they ask for a price, give a rough range if you can, or ask for photos to be accurate.
-Your main goal is just to be helpful and easy to talk to.
+You are a friendly, helpful General Contractor.
+You can handle any home improvement project.
+Chat naturally and collect project details.
 `;
 
 export async function POST(req: Request) {
@@ -16,48 +15,49 @@ export async function POST(req: Request) {
     const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { message: "SYSTEM ERROR: GOOGLE_API_KEY is missing." },
+        { message: "Missing GOOGLE_API_KEY" },
         { status: 500 }
       );
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
+    
+    // Using 'latest' to avoid 404 errors
     const model = genAI.getGenerativeModel({
-      // FIX: Use the specific stable version number
-      model: "gemini-1.5-flash-001", 
+      model: "gemini-1.5-flash-latest",
       systemInstruction: SYSTEM_PROMPT,
-      generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 500,
+      },
     });
 
     const body = await req.json();
-    const rawMessages = Array.isArray(body?.messages) ? body.messages : [];
+    const messages = body.messages ?? [];
 
-    // --- HISTORY FIX ---
-    const cleanedMessages = rawMessages.filter(
-      (m: any) => m.role === "user" || m.role === "assistant"
-    );
+    // SAFE MODE: Just grab the last thing the user said.
+    const lastUserMessage = messages
+      .filter((m: any) => m.role === "user")
+      .slice(-1)[0]?.content;
 
-    while (cleanedMessages.length && cleanedMessages[0].role !== "user") {
-      cleanedMessages.shift();
+    if (!lastUserMessage) {
+      return NextResponse.json(
+        { message: "Hello! What can I help you with today?" },
+        { status: 200 }
+      );
     }
 
-    const history = cleanedMessages.slice(0, -1).map((m: any) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: String(m.content ?? "") }],
-    }));
-
-    const lastMessage = cleanedMessages[cleanedMessages.length - 1]?.content ?? "";
-
-    const chat = model.startChat({ history });
-    const result = await chat.sendMessage(String(lastMessage));
+    // Generate the response
+    const result = await model.generateContent(lastUserMessage);
     const text = result.response.text();
 
+    // ✅ THE FIX: Return standard JSON (No streaming)
     return NextResponse.json({ message: text }, { status: 200 });
 
-  } catch (error: any) {
-    console.error("Gemini Error:", error);
+  } catch (err: any) {
+    console.error("Gemini Error:", err);
     return NextResponse.json(
-      { message: `SYSTEM ERROR: ${error?.message || "Unknown Error"}` },
+      { message: err.message || "Server error" },
       { status: 500 }
     );
   }
