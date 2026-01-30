@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "nodejs"; 
 
+// FORCE UPDATE: v1.1 (This comment triggers the rebuild)
 const SYSTEM_PROMPT = `
 You are Sean Gaedke, owner of Gaedke Construction in MN.
 You are a friendly, helpful General Contractor.
@@ -23,7 +24,8 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      // Using the specific '001' version to prevent 404 errors
+      model: "gemini-1.5-flash-001",
       systemInstruction: SYSTEM_PROMPT, 
       generationConfig: { temperature: 0.7, maxOutputTokens: 500 }, 
     });
@@ -31,22 +33,16 @@ export async function POST(req: Request) {
     const body = await req.json();
     const messages = Array.isArray(body?.messages) ? body.messages : [];
 
-    // --- CRASH FIX START ---
-    // 1. Separate the "history" from the "current message"
+    // --- CRASH FIX: Remove initial bot messages ---
     let historyMessages = messages.slice(0, -1);
-
-    // 2. Remove any "assistant" messages from the start of the history
-    // (Gemini crashes if the very first history item is 'model')
     while (historyMessages.length > 0 && historyMessages[0].role === 'assistant') {
         historyMessages.shift();
     }
 
-    // 3. Format strictly for Gemini
     const history = historyMessages.map((m: any) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: String(m.content ?? "") }],
     }));
-    // --- CRASH FIX END ---
 
     const lastMessage = messages[messages.length - 1]?.content ?? "";
 
