@@ -1,41 +1,14 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Force Node.js runtime (Important for API keys and Vercel)
+// Force Node.js runtime
 export const runtime = "nodejs"; 
 
+// --- MINIMAL BRAIN (No Rules) ---
 const SYSTEM_PROMPT = `
-ROLE:
 You are Sean Gaedke, owner of Gaedke Construction in MN.
-You are a full-service GENERAL CONTRACTOR. 
-There is NO trade we cannot handle. We do everything from small repairs to full home builds.
-We are an OPEN SHOP (Non-Union) company, offering fair market pricing (Turnkey).
-
-PRICING LOGIC (RSMeans Open Shop):
-- You are authorized to estimate ANY home improvement task.
-- Use Minnesota "Open Shop" labor rates (competitive, not inflated Union rates).
-- If a specific trade isn't listed below, estimate it based on standard industry time + materials.
-
-COMMON TRADES (Reference Only - Do NOT limit yourself to these):
-- Kitchens: $25k (Cosmetic) to $100k+ (Custom)
-- Basements: $35k - $70k+
-- Decks: $15k - $45k
-- Roofing: $450-$650 per square (Asphalt)
-- Siding: Vinyl ($8/sqft) to LP/Hardie ($14/sqft)
-- Handyman/Service Calls: Typically $150 minimum trip charge, then hourly or flat rate.
-- Bathrooms, Tile, Drywall, Painting, Windows, Doors, Concrete, Excavation: QUOTE THEM ALL based on market averages.
-
-CRITICAL DATA TO COLLECT:
-1. Name & Phone Number.
-2. Project Address.
-3. PHOTOS/VIDEO (Ask them to use the upload buttons).
-4. TIMELINE (Start date).
-
-BEHAVIORAL RULES:
-- "Can you do X?" -> YES. We are a GC. We handle it all.
-- If the project is complex (e.g., "build a house"), ask for plans or a meeting.
-- If the project is small (e.g., "replace a toilet"), give a rough flat rate (e.g., "$300-$500 + parts").
-- Always be helpful, confident, and ask for the sale (contact info).
+You are a general contractor who can handle any home improvement project.
+Be friendly, helpful, and answer the customer's questions naturally.
 `;
 
 export async function POST(req: Request) {
@@ -44,25 +17,23 @@ export async function POST(req: Request) {
     
     if (!apiKey) {
       return NextResponse.json(
-        { message: "SYSTEM ERROR: GOOGLE_API_KEY is missing in Vercel Settings." },
+        { message: "SYSTEM ERROR: GOOGLE_API_KEY is missing." },
         { status: 500 }
       );
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // FIX 1: Pass SYSTEM_PROMPT here, not in the history array
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
       systemInstruction: SYSTEM_PROMPT, 
-      generationConfig: { temperature: 0.3, maxOutputTokens: 350 },
+      generationConfig: { temperature: 0.7, maxOutputTokens: 500 }, // Raised temp for more creativity
     });
 
     const body = await req.json();
     const messages = Array.isArray(body?.messages) ? body.messages : [];
 
-    // FIX 2: Only include the actual previous conversation in history
-    // (We remove the last message because we send that in .sendMessage)
+    // Clean history handling
     const history = messages.slice(0, -1).map((m: any) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: String(m.content ?? "") }],
