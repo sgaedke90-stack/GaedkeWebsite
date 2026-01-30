@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, ArrowLeft, Paperclip, Bot, User, Loader2, FileVideo, FileText, Image as ImageIcon } from "lucide-react";
+import { Send, ArrowLeft, Bot, User, Loader2, FileVideo, FileText, Image as ImageIcon, Camera, FolderOpen } from "lucide-react";
 import Link from "next/link";
 import emailjs from '@emailjs/browser';
 
@@ -29,7 +29,6 @@ export default function ChatQuotePage() {
     const phoneMatch = messages.map(m => m.content).join(' ').match(/(\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4})/);
     const clientPhone = phoneMatch ? phoneMatch[0] : "Not detected";
     
-    // Scans for the intended start date keyword
     const dateKeywords = ["immediately", "month", "week", "year", "asap", "spring", "summer", "fall", "winter"];
     const timeline = messages.find(m => m.role === 'user' && dateKeywords.some(k => m.content.toLowerCase().includes(k)))?.content || "TBD";
 
@@ -56,7 +55,6 @@ FULL CHAT TRANSCRIPT BELOW:
        return `${m.role.toUpperCase()}: ${m.content}`;
     }).join('\n\n');
     
-    // Combine Summary + Transcript
     const fullEmailBody = summary + transcript;
 
     const templateParams = {
@@ -66,10 +64,10 @@ FULL CHAT TRANSCRIPT BELOW:
 
     try {
         await emailjs.send(
-            "service_y0yrfpq",       // Your Service ID
-            "template_52dvwec",      // <--- YOUR NEW TEMPLATE ID IS HERE!
+            "service_y0yrfpq",       
+            "template_52dvwec",      
             templateParams,
-            "1zDp7GlNHepyKQ7xf"      // Your Public Key
+            "1zDp7GlNHepyKQ7xf"      
         );
         console.log("Email Sent Successfully!");
     } catch (error) {
@@ -99,18 +97,14 @@ FULL CHAT TRANSCRIPT BELOW:
       });
 
       const data = await response.json();
-
       setIsTyping(false);
       
       if (data.message) {
         setMessages(prev => [...prev, { role: 'bot', content: data.message }]);
-        
-        // If the bot gives a price, we assume it's time to email you the lead
         if (data.message.includes('$')) {
              sendToOwner();
         }
       }
-
     } catch (error) {
       console.error(error);
       setIsTyping(false);
@@ -118,21 +112,16 @@ FULL CHAT TRANSCRIPT BELOW:
     }
   };
 
-  const handleFileUpload = async (e: any) => {
+  const handleFileUpload = async (e: any, specificType: 'camera' | 'image' | 'file') => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const fileType = file.type.split('/')[0]; 
     const fileUrl = URL.createObjectURL(file);
-    
     let newMessage: Message = { role: 'user', content: `Uploaded: ${file.name}`, fileUrl, fileName: file.name };
 
-    if (fileType === 'image') {
+    if (specificType === 'camera' || specificType === 'image') {
         newMessage.type = 'image';
-        newMessage.content = "Uploaded a Photo";
-    } else if (fileType === 'video') {
-        newMessage.type = 'video';
-        newMessage.content = "Uploaded a Video Walkthrough";
+        newMessage.content = specificType === 'camera' ? "Took a Photo" : "Uploaded Image";
     } else {
         newMessage.type = 'file';
         newMessage.content = `Uploaded Document: ${file.name}`;
@@ -143,20 +132,31 @@ FULL CHAT TRANSCRIPT BELOW:
     setIsTyping(true);
     setTimeout(() => {
         setIsTyping(false);
-        setMessages(prev => [...prev, { role: 'bot', content: "Got it! That helps me visualize the project. When are you hoping to start work?" }]);
+        setMessages(prev => [...prev, { role: 'bot', content: "Received! That visual helps a lot. When are you hoping to start work?" }]);
     }, 2000);
   };
 
   return (
     <main className="fixed inset-0 bg-zinc-950 flex flex-col">
+      {/* --- HEADER WITH CUSTOM BRAND LOGO --- */}
       <div className="bg-zinc-900 border-b border-zinc-800 p-4 flex items-center justify-between shrink-0">
         <Link href="/" className="text-zinc-400 hover:text-white flex items-center text-sm">
-          <ArrowLeft size={16} className="mr-2" /> Exit Chat
+          <ArrowLeft size={16} className="mr-2" /> Exit
         </Link>
-        <div className="flex flex-col items-center">
-             <span className="text-white font-serif font-bold">Gaedke AI Assistant</span>
-             <span className="text-xs text-green-500 flex items-center gap-1"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online</span>
+        
+        {/* THE CODE-GENERATED LOGO (Black, Gold, Blue) */}
+        <div className="flex items-center gap-3">
+             {/* This box mimics your logo using CSS borders and colors */}
+             <div className="w-10 h-10 bg-black border-2 border-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20">
+                <span className="text-amber-500 font-serif font-black text-xl">G</span>
+             </div>
+             
+             <div className="flex flex-col">
+                <span className="text-white font-bold leading-tight tracking-wide">GAEDKE</span>
+                <span className="text-[10px] text-zinc-400 font-medium">CONSTRUCTION LLC</span>
+             </div>
         </div>
+        
         <div className="w-8"></div>
       </div>
 
@@ -168,30 +168,40 @@ FULL CHAT TRANSCRIPT BELOW:
             <div className={`max-w-[85%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-zinc-800 text-white rounded-tr-none' : 'bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-tl-none'}`}>
               {msg.content}
               {msg.type === 'image' && msg.fileUrl && <img src={msg.fileUrl} alt="Upload" className="mt-2 rounded-lg max-h-48 object-cover border border-zinc-700" />}
-              {msg.type === 'video' && msg.fileUrl && (
-                  <div className="mt-2 bg-black/50 p-2 rounded border border-zinc-700">
-                      <div className="flex items-center gap-2 text-amber-500 mb-2 font-bold text-xs"><FileVideo size={16}/> Video Attached</div>
-                      <video src={msg.fileUrl} controls className="max-h-48 rounded w-full" />
-                  </div>
-              )}
               {msg.type === 'file' && <div className="mt-2 flex items-center gap-3 bg-black/20 p-3 rounded border border-zinc-700"><FileText className="text-amber-500" /><span className="text-sm underline">{msg.fileName}</span></div>}
             </div>
-
-            {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center shrink-0"><User size={18} className="text-zinc-400" /></div>}
           </div>
         ))}
         {isTyping && <div className="flex gap-3"><div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center"><Bot size={18} className="text-black" /></div><div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl rounded-tl-none"><Loader2 className="animate-spin text-zinc-500" size={16} /></div></div>}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="bg-zinc-900 border-t border-zinc-800 p-4 pb-6">
-        <form onSubmit={handleSend} className="max-w-4xl mx-auto relative flex items-center gap-2">
-          <label className="p-3 text-zinc-400 hover:text-amber-500 cursor-pointer transition-colors bg-zinc-950 rounded-full border border-zinc-800 flex items-center justify-center group" title="Upload Photos, Videos, or Files">
-            <Paperclip size={20} className="group-hover:scale-110 transition-transform"/>
-            <input type="file" className="hidden" onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx" />
+      {/* --- NEW INPUT AREA WITH 3 ICONS --- */}
+      <div className="bg-zinc-900 border-t border-zinc-800 p-3 pb-6">
+        <form onSubmit={handleSend} className="max-w-4xl mx-auto flex items-end gap-2">
+          
+          {/* 1. CAMERA BUTTON (Blue accent to match logo) */}
+          <label className="p-3 text-zinc-400 hover:text-blue-500 cursor-pointer bg-zinc-950 rounded-full border border-zinc-800 transition-colors">
+            <Camera size={20} />
+            {/* capture="environment" forces the rear camera on mobile */}
+            <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'camera')} accept="image/*" capture="environment" />
           </label>
-          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type a message..." className="flex-1 bg-zinc-950 border border-zinc-800 text-white rounded-full px-6 py-3 focus:outline-none focus:border-amber-500 transition-colors" />
-          <button type="submit" className="p-3 bg-amber-500 text-black rounded-full hover:bg-amber-400 transition-colors font-bold disabled:opacity-50"><Send size={20} /></button>
+
+          {/* 2. GALLERY BUTTON */}
+          <label className="p-3 text-zinc-400 hover:text-amber-500 cursor-pointer bg-zinc-950 rounded-full border border-zinc-800 transition-colors">
+            <ImageIcon size={20} />
+            <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'image')} accept="image/*" />
+          </label>
+
+          {/* 3. FILE BUTTON */}
+          <label className="p-3 text-zinc-400 hover:text-white cursor-pointer bg-zinc-950 rounded-full border border-zinc-800 transition-colors">
+            <FolderOpen size={20} />
+            <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'file')} accept=".pdf,.doc,.docx" />
+          </label>
+
+          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type message..." className="flex-1 bg-zinc-950 border border-zinc-800 text-white rounded-2xl px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors h-[50px]" />
+          
+          <button type="submit" className="h-[50px] w-[50px] bg-amber-500 text-black rounded-full hover:bg-amber-400 transition-colors flex items-center justify-center font-bold disabled:opacity-50 shrink-0"><Send size={20} /></button>
         </form>
       </div>
     </main>
