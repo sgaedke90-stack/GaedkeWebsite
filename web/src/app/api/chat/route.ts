@@ -43,7 +43,12 @@ export async function POST(req: Request) {
 
         // Robust extraction of returned text (handle different response shapes)
         const text = (result as any).text ?? (result as any).output?.[0]?.content?.[0]?.text ?? JSON.stringify(result);
-        return NextResponse.json({ message: text, model: modelId });
+
+        // Detect whether this response looks like a finished quote so clients can trigger email sends
+        const quoteIndicatorRegex = /(\$\s*\d{1,3}[\d,\.]*|\b(total|estimate|quotation|quote|subtotal|grand total|price|estimated)\b)/i;
+        const quoteComplete = quoteIndicatorRegex.test(String(text));
+
+        return NextResponse.json({ message: text, model: modelId, quoteComplete });
       } catch (err: any) {
         lastError = err;
         const msg = String(err?.message || "").toLowerCase();

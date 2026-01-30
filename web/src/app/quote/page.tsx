@@ -96,7 +96,9 @@ const handleSend = async (e?: React.FormEvent) => {
     setIsTyping(false);
     if (response.ok && data.message) {
       setMessages(prev => [...prev, { role: 'bot', content: data.message }]);
-      if (data.message.includes('$')) sendToOwner();
+      // If the API flagged the response as a completed quote, send to owner.
+      // Fallback to legacy `$` detection for backward compatibility.
+      if (data.quoteComplete || data.message.includes('$')) sendToOwner();
     } else {
       throw new Error(data.error || "Unexpected server response");
     }
