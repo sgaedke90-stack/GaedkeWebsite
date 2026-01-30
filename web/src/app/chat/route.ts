@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// --- SYSTEM CONFIGURATION ---
+// IMPORTANT: This forces Vercel to use the powerful server, not the "Edge" version
+export const runtime = "nodejs"; 
+
 const SYSTEM_PROMPT = `
 ROLE:
 You are Sean Gaedke, owner of Gaedke Construction in MN.
@@ -38,37 +40,48 @@ BEHAVIORAL RULES:
 
 export async function POST(req: Request) {
   try {
-    // 1. SECURITY CHECK: Ensure API Key exists
-    const apiKey = process.env.GOOGLE_API_KEY;
+    // Check both possible names for the API key just in case
+    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+    
     if (!apiKey) {
-      return NextResponse.json({ message: "SYSTEM ERROR: GOOGLE_API_KEY is missing in Vercel Settings." });
+      return NextResponse.json(
+        { message: "SYSTEM ERROR: GOOGLE_API_KEY is missing in Vercel Settings." },
+        { status: 500 }
+      );
     }
 
-    // 2. CONNECT TO GOOGLE
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        generationConfig: {
-            temperature: 0.3, // Low creativity = High accuracy for pricing
-            maxOutputTokens: 300,
-        }
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: { temperature: 0.3, maxOutputTokens: 350 },
     });
 
-    // 3. PROCESS CONVERSATION
-    const { messages } = await req.json();
-    const lastMessage = messages[messages.length - 1].content;
+    const body = await req.json();
+    const messages = Array.isArray(body?.messages) ? body.messages : [];
 
-    // 4. GENERATE ANSWER
-    const prompt = `${SYSTEM_PROMPT}\n\nUSER MESSAGE: ${lastMessage}`;
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    // This converts the chat history so the bot remembers what you just said
+    const history = [
+      { role: "user", parts: [{ text: SYSTEM_PROMPT }] },
+      ...messages.slice(0, -1).map((m: any) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: String(m.content ?? "") }],
+      })),
+    ];
 
-    return NextResponse.json({ message: text });
+    const lastMessage = messages[messages.length - 1]?.content ?? "";
+
+    const chat = model.startChat({ history });
+    const result = await chat.sendMessage(String(lastMessage));
+    const text = result.response.text();
+
+    return NextResponse.json({ message: text }, { status: 200 });
 
   } catch (error: any) {
     console.error("Gemini Error:", error);
-    // DEBUG MESSAGE: This will tell us exactly what is wrong on your phone screen
-    return NextResponse.json({ message: `SYSTEM ERROR: ${error.message || "Unknown Error"}` });
+    // DEBUG MODE: Return the specific error so we can see it on the phone
+    return NextResponse.json(
+      { message: `SYSTEM ERROR: ${error?.message || "Unknown Error"}` },
+      { status: 500 }
+    );
   }
 }
