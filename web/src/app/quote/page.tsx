@@ -96,9 +96,21 @@ const handleSend = async (e?: React.FormEvent) => {
     setIsTyping(false);
     if (response.ok && data.message) {
       setMessages(prev => [...prev, { role: 'bot', content: data.message }]);
-      // If the API flagged the response as a completed quote, send to owner.
-      // Fallback to legacy `$` detection for backward compatibility.
-      if (data.quoteComplete || data.message.includes('$')) sendToOwner();
+
+      // If the API flagged the response as a completed quote, it attempts server-side send.
+      if (data.quoteComplete) {
+        if (data.leadSent) {
+          setMessages(prev => [...prev, { role: 'bot', content: '✅ Quote has been emailed to Sean.' }]);
+        } else {
+          // Server tried but failed — fallback to client EmailJS send and surface error
+          console.warn('Server lead send failed:', data.leadError);
+          await sendToOwner();
+          setMessages(prev => [...prev, { role: 'bot', content: '⚠️ Quote email attempted from your browser as a fallback.' }]);
+        }
+      } else if (data.message.includes('$')) {
+        // Legacy fallback: if model embeds $ in the text and server didn't flag it
+        await sendToOwner();
+      }
     } else {
       throw new Error(data.error || "Unexpected server response");
     }
