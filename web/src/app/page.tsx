@@ -1,149 +1,121 @@
-import React from 'react';
-import { Phone, CheckCircle2, Hammer, Home, Ruler, Shield, Clock, ArrowRight, Menu } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link"; 
+import { Phone, ArrowRight, MessageSquare, Bot, Hammer, Ruler, HardHat } from "lucide-react";
 
-export default function HomePage() {
+export default function Home() {
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-amber-500 selection:text-black">
       
-      {/* --- Navigation --- */}
-      <nav className="fixed w-full z-50 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800">
-        <div className="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-amber-500 flex items-center justify-center rounded text-black font-bold text-2xl">
-              G
-            </div>
-            <div className="flex flex-col">
-              <span className="text-2xl md:text-3xl font-serif font-bold tracking-tight text-white leading-none">
-                Gaedke
-              </span>
-              <span className="text-sm md:text-base text-zinc-400 tracking-wider uppercase">
-                Construction LLC
-              </span>
-            </div>
+      {/* --- NAVIGATION BAR --- */}
+      <nav className="fixed w-full z-50 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-amber-500 rounded flex items-center justify-center font-serif font-bold text-black text-xl">G</div>
+            <span className="font-serif text-xl font-bold tracking-tight text-white">Gaedke<span className="text-amber-500">Construction</span></span>
           </div>
-
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-300">
-            <a href="#" className="hover:text-amber-500 transition-colors">Home</a>
+          
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
             <a href="#services" className="hover:text-amber-500 transition-colors">Services</a>
-            <a href="#projects" className="hover:text-amber-500 transition-colors">Our Work</a>
+            <Link href="/quote" className="hover:text-amber-500 transition-colors">Get a Quote</Link>
           </div>
 
-          <div className="hidden md:flex items-center gap-4">
-            <a href="tel:7633180605" className="px-6 py-3 border border-zinc-700 hover:border-amber-500 text-white rounded hover:text-amber-500 transition-all duration-300 font-medium">
-              Call (763) 318-0605
-            </a>
-          </div>
-          <button className="md:hidden text-white"><Menu size={32} /></button>
+          <Link href="/quote" className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-2.5 rounded font-bold text-sm transition-all flex items-center gap-2">
+            Start Quote <ArrowRight size={16} />
+          </Link>
         </div>
       </nav>
 
-      {/* --- Hero Section --- */}
-      <section className="relative h-[85vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/40 z-10" />
-          <img 
-            src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=2531&auto=format&fit=crop" 
-            alt="Luxury Home Build"
-            className="w-full h-full object-cover"
-          />
-        </div>
-
-        <div className="relative z-20 max-w-7xl mx-auto px-6 w-full pt-20">
-          <div className="max-w-3xl">
-            <span className="inline-block py-1 px-3 rounded-full bg-zinc-800/80 border border-zinc-700 text-amber-500 text-xs font-bold tracking-widest uppercase mb-6">
-              Minnesota's Trusted Construction Company
-            </span>
-            <h1 className="text-5xl md:text-7xl font-serif font-bold text-white mb-6 leading-tight">
-              Premium Construction <br /> 
-              <span className="text-zinc-400">& Remodels.</span>
+      {/* --- HERO SECTION --- */}
+      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-4 overflow-hidden">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center relative z-10">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-amber-500 text-xs font-bold uppercase tracking-wider mb-6">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Available for 2026 Projects
+            </div>
+            <h1 className="text-5xl md:text-7xl font-serif font-bold text-white leading-[1.1] mb-6">
+              Premium <br/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-amber-200">Construction</span> <br/>
+              & Remodels.
             </h1>
-            <p className="text-lg md:text-xl text-zinc-300 mb-10 max-w-2xl leading-relaxed">
-              Craftsmanship you can trust. From custom home builds to complete renovations, we deliver exceptional results.
+            <p className="text-lg text-zinc-400 mb-8 max-w-lg leading-relaxed">
+              Ready to start? Choose how you want to connect with us below.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button className="px-8 py-4 bg-amber-500 text-black font-bold rounded hover:bg-amber-400 transition-colors text-lg">Request a Quote</button>
-              <button className="px-8 py-4 bg-transparent border border-zinc-600 text-white font-semibold rounded hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2">
-                <Phone size={20} /> (763) 318-0605
-              </button>
+            
+            {/* --- THE 3 ACTIVE BUTTONS --- */}
+            <div className="flex flex-col gap-3">
+              
+              {/* BUTTON 1: AI CHATBOT */}
+              <Link href="/quote" className="w-full md:w-auto px-6 py-4 bg-amber-500 text-black font-bold rounded hover:bg-amber-400 transition-colors text-lg flex items-center justify-center gap-3">
+                <Bot size={24} className="text-black" />
+                <span>Start Smart Quote</span>
+                <span className="text-xs bg-black/10 px-2 py-0.5 rounded ml-2">AI BOT</span>
+              </Link>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* BUTTON 2: TEXT MESSAGE */}
+                <a href="sms:+17633180605?body=Hi Sean, I am interested in a quote for..." className="flex-1 px-6 py-4 bg-zinc-900 text-white font-bold rounded border border-zinc-800 hover:bg-zinc-800 transition-colors text-lg flex items-center justify-center gap-3">
+                  <MessageSquare size={20} className="text-amber-500" /> Text Us
+                </a>
+
+                {/* BUTTON 3: PHONE CALL */}
+                <a href="tel:+17633180605" className="flex-1 px-6 py-4 bg-zinc-900 text-white font-bold rounded border border-zinc-800 hover:bg-zinc-800 transition-colors text-lg flex items-center justify-center gap-3">
+                  <Phone size={20} className="text-amber-500" /> Call Now
+                </a>
+              </div>
+              
+              <p className="text-zinc-500 text-sm mt-2 text-center md:text-left">
+                Direct: (763) 318-0605 <span className="mx-2">•</span> Alt Text: (651) 592-5621
+              </p>
+
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* --- Services Section --- */}
-      <section id="services" className="py-24 bg-zinc-950">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <span className="text-amber-500 font-bold tracking-widest uppercase text-sm">Our Services</span>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold mt-3 mb-4">What We Do Best</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <ServiceCard icon={<Home />} title="Custom Home Building" desc="From foundation to finishing touches, we build dream homes." />
-            <ServiceCard icon={<Hammer />} title="Kitchen Remodels" desc="Transform your kitchen into a stunning, functional space." />
-            <ServiceCard icon={<Ruler />} title="Bathroom Renovations" desc="Create your own spa retreat with luxurious tile work." />
-            <ServiceCard icon={<Home />} title="Basement Finishing" desc="Maximize your home's potential with finished basements." />
-            <ServiceCard icon={<Hammer />} title="Deck & Outdoor Living" desc="Extend your living space outdoors with custom decks." />
-            <ServiceCard icon={<Ruler />} title="General Contracting" desc="Major renovations and project management." />
+          
+          {/* Hero Image */}
+          <div className="relative h-[500px] w-full bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 group">
+             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10"></div>
+             <img 
+               src="https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop" 
+               alt="Luxury Home Construction" 
+               className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700"
+             />
+             <div className="absolute bottom-8 left-8 z-20">
+                <p className="text-amber-500 font-bold text-sm mb-1">Featured Project</p>
+                <p className="text-white text-xl font-serif">The Larson Residence</p>
+             </div>
           </div>
         </div>
       </section>
 
-      {/* --- Projects Section --- */}
-      <section id="projects" className="py-24 bg-zinc-900">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex justify-between items-end mb-12">
+      {/* --- SERVICES SECTION --- */}
+      <section id="services" className="py-24 bg-zinc-900/50 border-y border-zinc-900">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
             <div>
-              <span className="text-amber-500 font-bold tracking-widest uppercase text-sm">Our Work</span>
-              <h2 className="text-4xl font-serif font-bold mt-2">Featured Projects</h2>
+               <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">Our Expertise</h2>
+               <p className="text-zinc-400 max-w-md">We specialize in high-stakes projects where attention to detail is non-negotiable.</p>
             </div>
-            <a href="#" className="hidden md:flex items-center gap-2 text-zinc-400 hover:text-white transition-colors border border-zinc-700 px-4 py-2 rounded">
-              View All Projects <ArrowRight size={16} />
-            </a>
+            <Link href="/quote" className="text-amber-500 font-bold hover:text-amber-400 flex items-center gap-2">
+               View All Services <ArrowRight size={16} />
+            </Link>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <ProjectCard category="Kitchen Remodel" title="Modern Kitchen" location="Edina, MN" img="https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&q=80" />
-            <ProjectCard category="Deck & Patio" title="Screened Porch" location="Coon Rapids, MN" img="https://images.unsplash.com/photo-1595846519845-68e298c2edd8?auto=format&fit=crop&q=80" />
-            <ProjectCard category="Exterior" title="Deck Upgrade" location="Blaine, MN" img="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80" />
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: HardHat, title: "Custom Home Builds", desc: "From foundation to finish, we manage the entire lifecycle of your dream home." },
+              { icon: Hammer, title: "Major Renovations", desc: "Kitchens, basements, and additions that seamlessly blend with your existing structure." },
+              { icon: Ruler, title: "Drafting & Design", desc: "In-house architectural planning to ensure your vision is buildable and beautiful." },
+            ].map((service, i) => (
+              <div key={i} className="p-8 bg-zinc-950 border border-zinc-800 rounded-xl hover:border-amber-500/50 transition-colors group">
+                <div className="w-12 h-12 bg-zinc-900 rounded-lg flex items-center justify-center mb-6 group-hover:bg-amber-500 transition-colors">
+                  <service.icon size={24} className="text-zinc-400 group-hover:text-black" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">{service.title}</h3>
+                <p className="text-zinc-400 leading-relaxed">{service.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
-
-      {/* --- Footer --- */}
-      <footer className="bg-zinc-950 pt-20 pb-10 border-t border-zinc-900">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-amber-500 flex items-center justify-center rounded text-black font-bold text-xl">G</div>
-            <span className="text-2xl font-serif font-bold text-white">Gaedke</span>
-          </div>
-          <p className="text-zinc-600 text-sm">&copy; {new Date().getFullYear()} Gaedke Construction LLC.</p>
-        </div>
-      </footer>
     </main>
   );
-}
-
-function ServiceCard({ icon, title, desc }: { icon: any, title: string, desc: string }) {
-  return (
-    <div className="p-8 bg-zinc-900/50 border border-zinc-800 rounded hover:border-amber-500/50 transition-colors group">
-      <div className="w-12 h-12 bg-zinc-800 rounded flex items-center justify-center text-amber-500 mb-6 group-hover:bg-amber-500 group-hover:text-black transition-colors">{icon}</div>
-      <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
-      <p className="text-zinc-400 leading-relaxed text-sm">{desc}</p>
-    </div>
-  )
-}
-
-function ProjectCard({ category, title, location, img }: { category: string, title: string, location: string, img: string }) {
-  return (
-    <div className="group relative h-80 rounded-lg overflow-hidden bg-zinc-800 cursor-pointer">
-      <img src={img} alt={title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent" />
-      <div className="absolute bottom-0 left-0 p-6 w-full">
-        <span className="text-amber-500 text-xs font-bold uppercase tracking-wider mb-2 block">{category}</span>
-        <h3 className="text-2xl font-serif font-bold text-white mb-1">{title}</h3>
-        <p className="text-zinc-400 text-sm">{location}</p>
-      </div>
-    </div>
-  )
 }
