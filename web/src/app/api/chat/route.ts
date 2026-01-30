@@ -61,7 +61,7 @@ export async function POST(req: Request) {
 
           try {
             // dynamic import so we don't import nodemailer in environments that don't need it
-            const { sendLead } = await import('../../../../lib/sendLead');
+            const { sendLead } = await import('../../../lib/sendLead');
             await sendLead({ summary, transcript, model: modelId, source: 'chat-api' });
             return NextResponse.json({ message: text, model: modelId, quoteComplete: true, leadSent: true });
           } catch (err: any) {
