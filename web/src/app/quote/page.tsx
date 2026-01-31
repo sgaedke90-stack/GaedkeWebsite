@@ -106,7 +106,7 @@ const handleSend = async (e?: React.FormEvent) => {
           // Server tried but failed — fallback to client EmailJS send and surface error
           console.warn('Server lead send failed:', data.leadError);
           await sendToOwner();
-          setMessages(prev => [...prev, { role: 'bot', content: '⚠️ Quote email attempted from your browser as a fallback.' }]);
+          setMessages(prev => [...prev, { role: 'bot', content: "I'm sending your project details to Sean now." }]);
         }
       } else if (data.message.includes('$')) {
         // Legacy fallback: if model embeds $ in the text and server didn't flag it
@@ -120,7 +120,7 @@ const handleSend = async (e?: React.FormEvent) => {
     setIsTyping(false);
     setMessages(prev => [
       ...prev,
-      { role: 'bot', content: "I'm having trouble connecting. Please text Sean directly at (763) 318‑0605." },
+      { role: 'bot', content: "That's a great question. Please text Sean directly at (763) 318-0605 so he can give you a specific answer." },
     ]);
   }
 };
@@ -150,16 +150,18 @@ const handleSend = async (e?: React.FormEvent) => {
 
   return (
     <main className="fixed inset-0 bg-zinc-950 flex flex-col">
-      {/* --- HEADER WITH CUSTOM BRAND LOGO --- */}
+      {/* --- HEADER WITH LOGO AND BRAND --- */}
       <div className="bg-zinc-900 border-b border-zinc-800 p-4 flex items-center justify-between shrink-0">
         <Link href="/" className="text-zinc-400 hover:text-white flex items-center text-sm">
           <ArrowLeft size={16} className="mr-2" /> Exit
         </Link>
-        
-        {/* THE CODE-GENERATED LOGO (Black, Gold, Blue) */}
         <div className="flex items-center gap-3">
-             {/* Use uploaded logo image */}
-             <Image src="/images/logo.jpg" alt="Gaedke Construction" width={40} height={40} className="rounded-lg object-cover" />
+          <Image src="/images/logo.jpg" alt="Gaedke Construction" width={40} height={40} className="rounded-lg object-cover" />
+          <div className="flex flex-col">
+            <span className="text-white font-bold leading-tight tracking-wide">GAEDKE</span>
+            <span className="text-[10px] text-zinc-400 font-medium">CONSTRUCTION LLC</span>
+          </div>
+        </div>
         <div className="w-8"></div>
       </div>
 

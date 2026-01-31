@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/app/api/**/*",
+    "src/**/*.ts",
+    "src/**/*.mts",
+    "scripts/**/*"
+  ],
+  "exclude": ["node_modules"]
+}

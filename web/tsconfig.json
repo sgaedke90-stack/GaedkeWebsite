@@ -20,9 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"]
-    },
-    // ✅ ADD THIS LINE RIGHT HERE
-    "types": ["node"] 
+    }
   },
   "include": [
     "next-env.d.ts",
