@@ -1,0 +1,36 @@
+
+> web@0.1.0 build
+> next build
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /workspaces/GaedkeWebsite/package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /workspaces/GaedkeWebsite/web/package-lock.json
+
+▲ Next.js 16.1.6 (Turbopack)
+
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./web/src/app/globals.css:1108:8
+Parsing CSS source code failed
+[0m [90m 1106 |[39m }
+ [90m 1107 |[39m
+[31m[1m>[22m[39m[90m 1108 |[39m [33m@[39m[36mimport[39m url([32m'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@300;400;500;600;700&display=swap'[39m)[33m;[39m
+ [90m      |[39m        [31m[1m^[22m[39m
+ [90m 1109 |[39m
+ [90m 1110 |[39m html {
+ [90m 1111 |[39m   scroll[33m-[39mbehavior[33m:[39m smooth[33m;[39m[0m
+
+@import rules must precede all rules aside from @charset and @layer statements
+
+Import trace:
+  Client Component Browser:
+    ./web/src/app/globals.css [Client Component Browser]
+    ./web/src/app/layout.tsx [Server Component]
+
+
+    at <unknown> (./web/src/app/globals.css:1108:8)

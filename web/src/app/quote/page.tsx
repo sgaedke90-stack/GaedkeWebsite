@@ -90,21 +90,90 @@ FULL CONVERSATION TRANSCRIPT:
 
     const fullEmailBody = summary + transcript;
 
-    const templateParams = {
-      from_name: leadData.name || 'New Lead',
-      message: fullEmailBody,
-    };
-
     try {
-      await emailjs.send(
-        'service_y0yrfpq',
-        'template_mwq9enc',
-        templateParams,
-        '1zDp7GlNHepyKQ7xf'
-      );
-      console.log('✅ Email sent successfully');
+      // Send via server-side endpoint (ensures email goes to Sgaedke90@gmail.com + logs to file)
+      const response = await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          summary,
+          transcript: fullEmailBody,
+          model: 'web-chat',
+          source: 'smart-quote',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send lead');
+      }
+
+      console.log('✅ Lead sent to Sgaedke90@gmail.com via server');
+
+      // Fire-and-forget analytics logging (non-blocking)
+      fetch('/api/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'lead_submitted_success',
+          data: {
+            name: leadData.name,
+            phone: leadData.phone,
+            hasAttachments: leadData.attachments.length > 0,
+            attachmentCount: leadData.attachments.length,
+          },
+        }),
+      }).catch(() => {
+        // Silently ignore analytics failures
+      });
     } catch (error) {
-      console.error('❌ Email send failed:', error);
+      console.error('❌ Lead send failed:', error);
+      // Fallback to EmailJS if server fails
+      try {
+        await emailjs.send(
+          'service_y0yrfpq',
+          'template_mwq9enc',
+          {
+            from_name: leadData.name || 'New Lead',
+            message: fullEmailBody,
+          },
+          '1zDp7GlNHepyKQ7xf'
+        );
+        console.log('✅ Fallback: Lead sent via EmailJS');
+
+        // Log fallback success to analytics
+        fetch('/api/analytics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'lead_submitted_fallback',
+            data: {
+              name: leadData.name,
+              phone: leadData.phone,
+              method: 'emailjs',
+            },
+          }),
+        }).catch(() => {
+          // Silently ignore analytics failures
+        });
+      } catch (emailError) {
+        console.error('❌ Both email methods failed:', emailError);
+
+        // Log failure to analytics
+        fetch('/api/analytics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'lead_submitted_failed',
+            data: {
+              name: leadData.name,
+              phone: leadData.phone,
+              error: String(emailError),
+            },
+          }),
+        }).catch(() => {
+          // Silently ignore analytics failures
+        });
+      }
     }
   }, [leadData, generateLeadSummary, messages]);
 
@@ -299,14 +368,37 @@ Reply "Yes" to confirm and send to Sean, or tell me what to change.
 
   return (
     <main className="fixed inset-0 flex flex-col bg-black">
-      {/* Header with gold divider */}
-      <header className="border-b-2 border-t-2 border-[#c8a24a] bg-gradient-to-r from-stone-800 via-stone-700 to-stone-800 px-6 py-6 text-center shadow-lg">
-        <h1 className="text-2xl font-bold tracking-wider text-[#c8a24a]">GAEDKE CONSTRUCTION</h1>
-        <p className="mt-1 text-sm font-medium text-[#c8a24a]">We Do It Better</p>
+      {/* Header with navigation */}
+      <header className="header-brushed-metal px-4 md:px-6 py-4 md:py-5">
+        <div className="mx-auto max-w-4xl flex items-center justify-between gap-4">
+          {/* Back button */}
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-sm font-bold text-yellow-500 hover:text-yellow-400 transition-colors"
+          >
+            <ArrowLeft size={18} />
+            <span className="hidden sm:inline">Back</span>
+          </Link>
+
+          {/* Title - centered, flex-grow for spacing */}
+          <div className="flex-1 text-center">
+            <h1 className="text-xl md:text-2xl font-serif font-bold tracking-wider text-yellow-500">GAEDKE CONSTRUCTION</h1>
+            <p className="mt-0.5 text-xs md:text-sm font-medium text-gray-400">Smart Quote AI</p>
+          </div>
+
+          {/* Email quote button */}
+          <a
+            href="mailto:Sgaedke90@gmail.com?subject=Quote%20Request%20from%20Website"
+            className="btn-gold flex items-center gap-2 whitespace-nowrap px-3 md:px-4 py-2 text-xs md:text-sm font-bold rounded"
+          >
+            <span className="hidden sm:inline">Email Quote</span>
+            <span className="sm:hidden">Email</span>
+          </a>
+        </div>
       </header>
 
       {/* Chat body with logo watermark */}
-      <div className="relative flex-1 overflow-y-auto p-6">
+      <div className="relative flex-1 overflow-y-auto p-4 md:p-6">
         {/* Logo watermark background */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <Image
@@ -319,28 +411,28 @@ Reply "Yes" to confirm and send to Sean, or tell me what to change.
         </div>
 
         {/* Chat messages */}
-        <div className="relative z-10 space-y-4">
+        <div className="relative z-10 space-y-3 md:space-y-4 max-w-4xl mx-auto">
           {messages.map((msg, idx) => {
             const isBotMessage = msg.role === 'bot';
             return (
               <div
                 key={`${idx}-${msg.role}`}
-                className={`flex gap-4 ${isBotMessage ? 'justify-start' : 'justify-end'}`}
+                className={`flex gap-2 md:gap-4 ${isBotMessage ? 'justify-start' : 'justify-end'}`}
               >
                 {isBotMessage && (
-                  <div className="flex shrink-0 items-center justify-center rounded-full bg-[#c8a24a] h-10 w-10 shadow-lg">
-                    <Bot size={20} className="text-black" />
+                  <div className="flex shrink-0 items-center justify-center rounded-full bg-yellow-500 h-8 md:h-10 w-8 md:w-10 shadow-lg">
+                    <Bot size={16} className="md:w-5 md:h-5 text-black" />
                   </div>
                 )}
 
                 <div
-                  className={`max-w-[65%] rounded-2xl px-5 py-3 shadow-lg ${
+                  className={`max-w-xs md:max-w-lg rounded-2xl px-4 md:px-5 py-2 md:py-3 shadow-lg text-xs md:text-sm ${
                     isBotMessage
-                      ? 'bg-stone-800 text-stone-100 rounded-tl-none'
-                      : 'bg-stone-700 text-white rounded-tr-none'
+                      ? 'bg-yellow-500/10 border border-yellow-500/30 text-white rounded-tl-none'
+                      : 'bg-yellow-500 text-black font-medium rounded-tr-none'
                   }`}
                 >
-                  <p className="text-sm leading-relaxed">{msg.content}</p>
+                  <p className="leading-relaxed">{msg.content}</p>
                   {msg.type === 'image' && msg.fileUrl && (
                     <img
                       src={msg.fileUrl}
@@ -349,8 +441,8 @@ Reply "Yes" to confirm and send to Sean, or tell me what to change.
                     />
                   )}
                   {msg.type === 'file' && (
-                    <div className="mt-3 flex items-center gap-2 rounded border border-stone-600 bg-black/30 p-2">
-                      <FileText size={16} className="text-[#c8a24a]" />
+                    <div className="mt-3 flex items-center gap-2 rounded border border-yellow-500/30 bg-yellow-500/5 p-2">
+                      <FileText size={16} className="text-yellow-500" />
                       <span className="truncate text-xs underline">{msg.fileName}</span>
                     </div>
                   )}
@@ -359,12 +451,12 @@ Reply "Yes" to confirm and send to Sean, or tell me what to change.
             );
           })}
           {isTyping && (
-            <div className="flex gap-4">
-              <div className="flex items-center justify-center rounded-full bg-[#c8a24a] h-10 w-10 shadow-lg">
-                <Bot size={20} className="text-black" />
+            <div className="flex gap-2 md:gap-4">
+              <div className="flex items-center justify-center rounded-full bg-yellow-500 h-8 md:h-10 w-8 md:w-10 shadow-lg">
+                <Bot size={16} className="md:w-5 md:h-5 text-black" />
               </div>
-              <div className="rounded-2xl rounded-tl-none border-2 border-stone-700 bg-stone-800 px-5 py-3 shadow-lg">
-                <Loader2 size={18} className="animate-spin text-[#c8a24a]" />
+              <div className="rounded-2xl rounded-tl-none border-2 border-yellow-500/30 bg-yellow-500/10 px-4 md:px-5 py-2 md:py-3 shadow-lg">
+                <Loader2 size={16} className="md:w-4 md:h-4 animate-spin text-yellow-500" />
               </div>
             </div>
           )}
@@ -373,16 +465,17 @@ Reply "Yes" to confirm and send to Sean, or tell me what to change.
       </div>
 
       {/* Input area with gold divider */}
-      <div className="border-t-2 border-[#c8a24a] bg-gradient-to-r from-stone-800 via-stone-700 to-stone-800 px-6 py-5 shadow-lg">
-        <form onSubmit={handleSend} className="mx-auto flex max-w-2xl items-center gap-3">
+      <div className="border-t-2 border-yellow-500/20 bg-gradient-to-r from-black via-yellow-500/5 to-black px-4 md:px-6 py-4 md:py-5 shadow-lg">
+        <form onSubmit={handleSend} className="mx-auto flex max-w-4xl items-center gap-2 md:gap-3">
           {/* Camera button */}
           <button
             type="button"
             onClick={() => {}}
-            className="group relative rounded-full border-2 border-[#c8a24a] bg-stone-800 p-3 text-[#c8a24a] transition-all hover:bg-[#c8a24a] hover:text-black shadow-md"
+            className="group relative shrink-0 rounded-full border-2 border-yellow-500 bg-black p-2 md:p-3 text-yellow-500 transition-all hover:bg-yellow-500 hover:text-black shadow-md"
+            title="Capture photo"
           >
             <label className="cursor-pointer">
-              <Camera size={20} />
+              <Camera size={18} className="md:w-5 md:h-5" />
               <input
                 type="file"
                 className="hidden"
@@ -398,10 +491,11 @@ Reply "Yes" to confirm and send to Sean, or tell me what to change.
           <button
             type="button"
             onClick={() => {}}
-            className="group relative rounded-full border-2 border-[#c8a24a] bg-stone-800 p-3 text-[#c8a24a] transition-all hover:bg-[#c8a24a] hover:text-black shadow-md"
+            className="group relative shrink-0 rounded-full border-2 border-yellow-500 bg-black p-2 md:p-3 text-yellow-500 transition-all hover:bg-yellow-500 hover:text-black shadow-md"
+            title="Upload image"
           >
             <label className="cursor-pointer">
-              <ImageIcon size={20} />
+              <ImageIcon size={18} className="md:w-5 md:h-5" />
               <input
                 type="file"
                 className="hidden"
@@ -416,10 +510,11 @@ Reply "Yes" to confirm and send to Sean, or tell me what to change.
           <button
             type="button"
             onClick={() => {}}
-            className="group relative rounded-full border-2 border-[#c8a24a] bg-stone-800 p-3 text-[#c8a24a] transition-all hover:bg-[#c8a24a] hover:text-black shadow-md"
+            className="group relative shrink-0 rounded-full border-2 border-yellow-500 bg-black p-2 md:p-3 text-yellow-500 transition-all hover:bg-yellow-500 hover:text-black shadow-md"
+            title="Upload document"
           >
             <label className="cursor-pointer">
-              <FolderOpen size={20} />
+              <FolderOpen size={18} className="md:w-5 md:h-5" />
               <input
                 type="file"
                 className="hidden"
@@ -436,7 +531,7 @@ Reply "Yes" to confirm and send to Sean, or tell me what to change.
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type message..."
-            className="flex-1 rounded-full border-2 border-stone-600 bg-stone-900 px-5 py-3 text-sm text-white placeholder-stone-500 transition-colors focus:border-[#c8a24a] focus:outline-none shadow-md"
+            className="flex-1 rounded-full border-2 border-yellow-500/20 bg-black/50 px-4 md:px-5 py-2 md:py-3 text-xs md:text-sm text-white placeholder-gray-500 transition-colors focus:border-yellow-500 focus:outline-none shadow-md min-w-0"
             aria-label="Chat message input"
           />
 
@@ -444,10 +539,10 @@ Reply "Yes" to confirm and send to Sean, or tell me what to change.
           <button
             type="submit"
             disabled={isTyping || !input.trim()}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#c8a24a] font-bold text-black transition-all hover:bg-[#d4b55c] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            className="btn-gold flex shrink-0 h-10 md:h-12 w-10 md:w-12 items-center justify-center rounded-full font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             aria-label="Send message"
           >
-            <Send size={20} />
+            <Send size={18} className="md:w-5 md:h-5" />
           </button>
         </form>
       </div>
