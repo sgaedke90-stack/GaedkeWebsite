@@ -169,128 +169,145 @@ FULL CHAT TRANSCRIPT BELOW:
   );
 
   return (
-    <main className="fixed inset-0 flex flex-col bg-zinc-950">
-      {/* Header */}
-      <header className="flex items-center justify-between shrink-0 border-b border-zinc-800 bg-zinc-900 p-4">
-        <Link href="/" className="flex items-center text-sm text-zinc-400 hover:text-white">
-          <ArrowLeft size={16} className="mr-2" />
-          Exit
-        </Link>
-        <div className="flex items-center gap-3">
-          <Image
-            src="/images/logo.jpg"
-            alt="Gaedke Construction"
-            width={40}
-            height={40}
-            className="rounded-lg object-cover"
-          />
-          <div className="flex flex-col">
-            <span className="font-bold leading-tight tracking-wide text-white">GAEDKE</span>
-            <span className="text-[10px] font-medium text-zinc-400">CONSTRUCTION LLC</span>
-          </div>
-        </div>
-        <div className="w-8" />
+    <main className="fixed inset-0 flex flex-col bg-black">
+      {/* Header with gold divider */}
+      <header className="border-b-2 border-t-2 border-[#c8a24a] bg-gradient-to-r from-stone-800 via-stone-700 to-stone-800 px-6 py-6 text-center shadow-lg">
+        <h1 className="text-2xl font-bold tracking-wider text-[#c8a24a]">GAEDKE CONSTRUCTION</h1>
+        <p className="mt-1 text-sm font-medium text-[#c8a24a]">We Do It Better</p>
       </header>
 
-      {/* Chat messages */}
-      <div className="space-y-6 overflow-y-auto flex-1 p-4">
-        {messages.map((msg, idx) => {
-          const isBotMessage = msg.role === 'bot';
-          return (
-            <div
-              key={`${idx}-${msg.role}`}
-              className={`flex gap-3 ${isBotMessage ? 'justify-start' : 'justify-end'}`}
-            >
-              {isBotMessage && (
-                <div className="flex shrink-0 items-center justify-center rounded-full bg-amber-500 h-8 w-8">
-                  <Bot size={18} className="text-black" />
-                </div>
-              )}
+      {/* Chat body with logo watermark */}
+      <div className="relative flex-1 overflow-y-auto p-6">
+        {/* Logo watermark background */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <Image
+            src="/images/logo.jpg"
+            alt="Gaedke Construction Logo"
+            width={400}
+            height={400}
+            className="opacity-20 object-contain"
+          />
+        </div>
 
+        {/* Chat messages */}
+        <div className="relative z-10 space-y-4">
+          {messages.map((msg, idx) => {
+            const isBotMessage = msg.role === 'bot';
+            return (
               <div
-                className={`max-w-[85%] rounded-2xl p-4 ${
-                  isBotMessage
-                    ? 'rounded-tl-none border border-zinc-800 bg-zinc-900 text-zinc-200'
-                    : 'rounded-tr-none bg-zinc-800 text-white'
-                }`}
+                key={`${idx}-${msg.role}`}
+                className={`flex gap-4 ${isBotMessage ? 'justify-start' : 'justify-end'}`}
               >
-                <p>{msg.content}</p>
-                {msg.type === 'image' && msg.fileUrl && (
-                  <img
-                    src={msg.fileUrl}
-                    alt="User uploaded image"
-                    className="mt-2 max-h-48 rounded-lg border border-zinc-700 object-cover"
-                  />
-                )}
-                {msg.type === 'file' && (
-                  <div className="mt-2 flex items-center gap-3 rounded border border-zinc-700 bg-black/20 p-3">
-                    <FileText className="text-amber-500" />
-                    <span className="text-sm underline">{msg.fileName}</span>
+                {isBotMessage && (
+                  <div className="flex shrink-0 items-center justify-center rounded-full bg-[#c8a24a] h-10 w-10 shadow-lg">
+                    <Bot size={20} className="text-black" />
                   </div>
                 )}
+
+                <div
+                  className={`max-w-[65%] rounded-2xl px-5 py-3 shadow-lg ${
+                    isBotMessage
+                      ? 'bg-stone-800 text-stone-100 rounded-tl-none'
+                      : 'bg-stone-700 text-white rounded-tr-none'
+                  }`}
+                >
+                  <p className="text-sm leading-relaxed">{msg.content}</p>
+                  {msg.type === 'image' && msg.fileUrl && (
+                    <img
+                      src={msg.fileUrl}
+                      alt="User uploaded image"
+                      className="mt-3 max-h-48 rounded-lg border border-stone-600 object-cover"
+                    />
+                  )}
+                  {msg.type === 'file' && (
+                    <div className="mt-3 flex items-center gap-2 rounded border border-stone-600 bg-black/30 p-2">
+                      <FileText size={16} className="text-[#c8a24a]" />
+                      <span className="truncate text-xs underline">{msg.fileName}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {isTyping && (
+            <div className="flex gap-4">
+              <div className="flex items-center justify-center rounded-full bg-[#c8a24a] h-10 w-10 shadow-lg">
+                <Bot size={20} className="text-black" />
+              </div>
+              <div className="rounded-2xl rounded-tl-none border-2 border-stone-700 bg-stone-800 px-5 py-3 shadow-lg">
+                <Loader2 size={18} className="animate-spin text-[#c8a24a]" />
               </div>
             </div>
-          );
-        })}
-        {isTyping && (
-          <div className="flex gap-3">
-            <div className="flex items-center justify-center rounded-full bg-amber-500 h-8 w-8">
-              <Bot size={18} className="text-black" />
-            </div>
-            <div className="rounded-2xl rounded-tl-none border border-zinc-800 bg-zinc-900 p-4">
-              <Loader2 size={16} className="animate-spin text-zinc-500" />
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          )}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      {/* Input area */}
-      <div className="border-t border-zinc-800 bg-zinc-900 p-3 pb-6">
-        <form onSubmit={handleSend} className="mx-auto flex max-w-4xl items-end gap-2">
+      {/* Input area with gold divider */}
+      <div className="border-t-2 border-[#c8a24a] bg-gradient-to-r from-stone-800 via-stone-700 to-stone-800 px-6 py-5 shadow-lg">
+        <form onSubmit={handleSend} className="mx-auto flex max-w-2xl items-center gap-3">
           {/* Camera button */}
-          <label className="cursor-pointer rounded-full border border-zinc-800 bg-zinc-950 p-3 text-zinc-400 transition-colors hover:text-blue-500">
-            <Camera size={20} />
-            <input
-              type="file"
-              className="hidden"
-              onChange={(e) => handleFileUpload(e, 'camera')}
-              accept="image/*"
-              capture="environment"
-              aria-label="Capture photo"
-            />
-          </label>
+          <button
+            type="button"
+            onClick={() => {}}
+            className="group relative rounded-full border-2 border-[#c8a24a] bg-stone-800 p-3 text-[#c8a24a] transition-all hover:bg-[#c8a24a] hover:text-black shadow-md"
+          >
+            <label className="cursor-pointer">
+              <Camera size={20} />
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => handleFileUpload(e, 'camera')}
+                accept="image/*"
+                capture="environment"
+                aria-label="Capture photo"
+              />
+            </label>
+          </button>
 
-          {/* Gallery button */}
-          <label className="cursor-pointer rounded-full border border-zinc-800 bg-zinc-950 p-3 text-zinc-400 transition-colors hover:text-amber-500">
-            <ImageIcon size={20} />
-            <input
-              type="file"
-              className="hidden"
-              onChange={(e) => handleFileUpload(e, 'image')}
-              accept="image/*"
-              aria-label="Upload image"
-            />
-          </label>
+          {/* Image button */}
+          <button
+            type="button"
+            onClick={() => {}}
+            className="group relative rounded-full border-2 border-[#c8a24a] bg-stone-800 p-3 text-[#c8a24a] transition-all hover:bg-[#c8a24a] hover:text-black shadow-md"
+          >
+            <label className="cursor-pointer">
+              <ImageIcon size={20} />
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => handleFileUpload(e, 'image')}
+                accept="image/*"
+                aria-label="Upload image"
+              />
+            </label>
+          </button>
 
           {/* File button */}
-          <label className="cursor-pointer rounded-full border border-zinc-800 bg-zinc-950 p-3 text-zinc-400 transition-colors hover:text-white">
-            <FolderOpen size={20} />
-            <input
-              type="file"
-              className="hidden"
-              onChange={(e) => handleFileUpload(e, 'file')}
-              accept=".pdf,.doc,.docx"
-              aria-label="Upload document"
-            />
-          </label>
+          <button
+            type="button"
+            onClick={() => {}}
+            className="group relative rounded-full border-2 border-[#c8a24a] bg-stone-800 p-3 text-[#c8a24a] transition-all hover:bg-[#c8a24a] hover:text-black shadow-md"
+          >
+            <label className="cursor-pointer">
+              <FolderOpen size={20} />
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => handleFileUpload(e, 'file')}
+                accept=".pdf,.doc,.docx"
+                aria-label="Upload document"
+              />
+            </label>
+          </button>
 
           {/* Message input */}
           <input
+            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type message..."
-            className="h-[50px] flex-1 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white transition-colors focus:border-amber-500 focus:outline-none"
+            className="flex-1 rounded-full border-2 border-stone-600 bg-stone-900 px-5 py-3 text-sm text-white placeholder-stone-500 transition-colors focus:border-[#c8a24a] focus:outline-none shadow-md"
             aria-label="Chat message input"
           />
 
@@ -298,7 +315,7 @@ FULL CHAT TRANSCRIPT BELOW:
           <button
             type="submit"
             disabled={isTyping || !input.trim()}
-            className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-amber-500 font-bold text-black transition-colors hover:bg-amber-400 disabled:opacity-50"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#c8a24a] font-bold text-black transition-all hover:bg-[#d4b55c] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             aria-label="Send message"
           >
             <Send size={20} />
