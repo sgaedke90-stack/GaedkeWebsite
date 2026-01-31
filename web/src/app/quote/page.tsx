@@ -1,37 +1,40 @@
 "use client";
-import React, { useState, useRef, useEffect } from 'react';
+
+import { useState, useRef, useEffect, useCallback, FormEvent, ChangeEvent } from 'react';
 import Image from "next/image";
-import { Send, ArrowLeft, Bot, User, Loader2, FileVideo, FileText, Image as ImageIcon, Camera, FolderOpen } from "lucide-react";
+import { Send, ArrowLeft, Bot, Loader2, FileText, Image as ImageIcon, Camera, FolderOpen } from "lucide-react";
 import Link from "next/link";
 import emailjs from '@emailjs/browser';
 
-type Message = {
-  role: 'bot' | 'user';
-  content: string;
-  type?: 'text' | 'image' | 'file' | 'video';
-  fileUrl?: string;
-  fileName?: string;
-};
+type MessageType = 'text' | 'image' | 'file' | 'video';
 
-export default function ChatQuotePage() {
-  const [messages, setMessages] = useState<Message[]>([
+interface Message {
+  readonly role: 'bot' | 'user';
+  readonly content: string;
+  readonly type?: MessageType;
+  readonly fileUrl?: string;
+  readonly fileName?: string;
+}
+
+export default function ChatQuotePage(): JSX.Element {
+  const [messages, setMessages] = useState<readonly Message[]>([
     { role: 'bot', content: "Hello! I'm the Gaedke Construction AI assistant. To start, what is your first and last name?" }
   ]);
-  const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  const [input, setInput] = useState<string>('');
+  const [isTyping, setIsTyping] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const generateLeadSummary = () => {
-    const clientName = messages[1]?.role === 'user' ? messages[1].content : "Unknown Client";
-    const phoneMatch = messages.map(m => m.content).join(' ').match(/(\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4})/);
-    const clientPhone = phoneMatch ? phoneMatch[0] : "Not detected";
-    
-    const dateKeywords = ["immediately", "month", "week", "year", "asap", "spring", "summer", "fall", "winter"];
-    const timeline = messages.find(m => m.role === 'user' && dateKeywords.some(k => m.content.toLowerCase().includes(k)))?.content || "TBD";
+  const generateLeadSummary = useCallback((): string => {
+    const clientName = messages[1]?.role === 'user' ? messages[1].content : 'Unknown Client';
+    const phoneMatch = messages.map((m) => m.content).join(' ').match(/(\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4})/);
+    const clientPhone = phoneMatch ? phoneMatch[0] : 'Not detected';
+
+    const dateKeywords: readonly string[] = ['immediately', 'month', 'week', 'year', 'asap', 'spring', 'summer', 'fall', 'winter'];
+    const timeline = messages.find((m) => m.role === 'user' && dateKeywords.some((k) => m.content.toLowerCase().includes(k)))?.content || 'TBD';
 
     return `
 ========================================
@@ -40,173 +43,268 @@ export default function ChatQuotePage() {
 👤 NAME:       ${clientName}
 📱 PHONE:      ${clientPhone}
 📅 START DATE: ${timeline}
-📂 FILES:      ${messages.filter(m => m.type === 'image').length} Photos, ${messages.filter(m => m.type === 'video').length} Videos
+📂 FILES:      ${messages.filter((m) => m.type === 'image').length} Photos, ${messages.filter((m) => m.type === 'video').length} Videos
 ----------------------------------------
 FULL CHAT TRANSCRIPT BELOW:
 ----------------------------------------
     `;
-  };
+  }, [messages]);
 
-  const sendToOwner = async () => {
+  const sendToOwner = useCallback(async (): Promise<void> => {
     const summary = generateLeadSummary();
-    const transcript = messages.map(m => {
-       if (m.type === 'image') return `[📸 PHOTO UPLOADED]`;
-       if (m.type === 'video') return `[🎥 VIDEO UPLOADED]`;
-       if (m.type === 'file') return `[📄 FILE UPLOADED: ${m.fileName}]`;
-       return `${m.role.toUpperCase()}: ${m.content}`;
-    }).join('\n\n');
-    
+    const transcript = messages
+      .map((m) => {
+        if (m.type === 'image') return '[📸 PHOTO UPLOADED]';
+        if (m.type === 'video') return '[🎥 VIDEO UPLOADED]';
+        if (m.type === 'file') return `[📄 FILE UPLOADED: ${m.fileName}]`;
+        return `${m.role.toUpperCase()}: ${m.content}`;
+      })
+      .join('\n\n');
+
     const fullEmailBody = summary + transcript;
 
     const templateParams = {
-        from_name: messages[1]?.content || "New Lead",
-        message: fullEmailBody,
+      from_name: messages[1]?.content || 'New Lead',
+      message: fullEmailBody,
     };
 
     try {
-        await emailjs.send(
-            "service_y0yrfpq",       
-            "template_mwq9enc",      
-            templateParams,
-            "1zDp7GlNHepyKQ7xf"      
-        );
-        console.log("Email Sent Successfully!");
+      await emailjs.send(
+        'service_y0yrfpq',
+        'template_mwq9enc',
+        templateParams,
+        '1zDp7GlNHepyKQ7xf'
+      );
+      console.log('Email sent successfully');
     } catch (error) {
-        console.error("Email Failed:", error);
+      console.error('Email failed:', error);
     }
-  };
+  }, [messages, generateLeadSummary]);
 
-const handleSend = async (e?: React.FormEvent) => {
-  e?.preventDefault();
-  if (isTyping || !input.trim()) return;
-  const newMessages = [...messages, { role: 'user', content: input } as Message];
-  setMessages(newMessages);
-  setInput('');
-  setIsTyping(true);
-  try {
-    const apiMessages = newMessages.map(m => ({
-      role: m.role === 'bot' ? 'assistant' : 'user',
-      content: m.content,
-    }));
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: apiMessages }),
-    });
-    const data = await response.json();
-    setIsTyping(false);
-    if (response.ok && data.message) {
-      setMessages(prev => [...prev, { role: 'bot', content: data.message }]);
+  const handleSend = useCallback(async (e?: FormEvent<HTMLFormElement>): Promise<void> => {
+    e?.preventDefault();
+    if (isTyping || !input.trim()) return;
 
-      // If the API flagged the response as a completed quote, it attempts server-side send.
+    const newMessage: Message = { role: 'user', content: input };
+    const newMessages = [...messages, newMessage] as const;
+    setMessages(newMessages as Message[]);
+    setInput('');
+    setIsTyping(true);
+
+    try {
+      const apiMessages = newMessages.map((m) => ({
+        role: m.role === 'bot' ? 'assistant' : 'user' as const,
+        content: m.content,
+      }));
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+
+      const data = (await response.json()) as {
+        message?: string;
+        error?: string;
+        quoteComplete?: boolean;
+        leadSent?: boolean;
+        leadError?: string;
+      };
+
+      setIsTyping(false);
+
+      if (!response.ok || !data.message) {
+        throw new Error(data.error || 'Unexpected server response');
+      }
+
+      setMessages((prev) => [...prev, { role: 'bot', content: data.message }]);
+
       if (data.quoteComplete) {
         if (data.leadSent) {
-          setMessages(prev => [...prev, { role: 'bot', content: '✅ Quote has been emailed to Sean.' }]);
+          setMessages((prev) => [...prev, { role: 'bot', content: '✅ Quote has been emailed to Sean.' }]);
         } else {
-          // Server tried but failed — fallback to client EmailJS send and surface error
           console.warn('Server lead send failed:', data.leadError);
           await sendToOwner();
-          setMessages(prev => [...prev, { role: 'bot', content: "I'm sending your project details to Sean now." }]);
+          setMessages((prev) => [...prev, { role: 'bot', content: "I'm sending your project details to Sean now." }]);
         }
       } else if (data.message.includes('$')) {
-        // Legacy fallback: if model embeds $ in the text and server didn't flag it
         await sendToOwner();
       }
-    } else {
-      throw new Error(data.error || "Unexpected server response");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Chat error:', errorMessage);
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        { role: 'bot', content: "That's a great question. Please text Sean directly at (763) 318-0605 so he can give you a specific answer." },
+      ]);
     }
-  } catch (error: any) {
-    console.error("Chat error:", error);
-    setIsTyping(false);
-    setMessages(prev => [
-      ...prev,
-      { role: 'bot', content: "That's a great question. Please text Sean directly at (763) 318-0605 so he can give you a specific answer." },
-    ]);
-  }
-};
-  const handleFileUpload = async (e: any, specificType: 'camera' | 'image' | 'file') => {
-    const file = e.target.files[0];
-    if (!file) return;
+  }, [isTyping, input, messages, sendToOwner]);
+  const handleFileUpload = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>, specificType: 'camera' | 'image' | 'file'): Promise<void> => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    const fileUrl = URL.createObjectURL(file);
-    let newMessage: Message = { role: 'user', content: `Uploaded: ${file.name}`, fileUrl, fileName: file.name };
+      const fileUrl = URL.createObjectURL(file);
+      const fileType: MessageType = specificType === 'camera' || specificType === 'image' ? 'image' : 'file';
+      const fileContent = specificType === 'camera' ? 'Took a Photo' : specificType === 'image' ? 'Uploaded Image' : `Uploaded Document: ${file.name}`;
 
-    if (specificType === 'camera' || specificType === 'image') {
-        newMessage.type = 'image';
-        newMessage.content = specificType === 'camera' ? "Took a Photo" : "Uploaded Image";
-    } else {
-        newMessage.type = 'file';
-        newMessage.content = `Uploaded Document: ${file.name}`;
-    }
+      const newMessage: Message = {
+        role: 'user',
+        content: fileContent,
+        type: fileType,
+        fileUrl,
+        fileName: file.name,
+      };
 
-    setMessages(prev => [...prev, newMessage]);
-    
-    setIsTyping(true);
-    setTimeout(() => {
+      setMessages((prev) => [...prev, newMessage]);
+      setIsTyping(true);
+
+      const timer = setTimeout(() => {
         setIsTyping(false);
-        setMessages(prev => [...prev, { role: 'bot', content: "Received! That visual helps a lot. When are you hoping to start work?" }]);
-    }, 2000);
-  };
+        setMessages((prev) => [...prev, { role: 'bot', content: 'Received! That visual helps a lot. When are you hoping to start work?' }]);
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    },
+    []
+  );
 
   return (
-    <main className="fixed inset-0 bg-zinc-950 flex flex-col">
-      {/* --- HEADER WITH LOGO AND BRAND --- */}
-      <div className="bg-zinc-900 border-b border-zinc-800 p-4 flex items-center justify-between shrink-0">
-        <Link href="/" className="text-zinc-400 hover:text-white flex items-center text-sm">
-          <ArrowLeft size={16} className="mr-2" /> Exit
+    <main className="fixed inset-0 flex flex-col bg-zinc-950">
+      {/* Header */}
+      <header className="flex items-center justify-between shrink-0 border-b border-zinc-800 bg-zinc-900 p-4">
+        <Link href="/" className="flex items-center text-sm text-zinc-400 hover:text-white">
+          <ArrowLeft size={16} className="mr-2" />
+          Exit
         </Link>
         <div className="flex items-center gap-3">
-          <Image src="/images/logo.jpg" alt="Gaedke Construction" width={40} height={40} className="rounded-lg object-cover" />
+          <Image
+            src="/images/logo.jpg"
+            alt="Gaedke Construction"
+            width={40}
+            height={40}
+            className="rounded-lg object-cover"
+          />
           <div className="flex flex-col">
-            <span className="text-white font-bold leading-tight tracking-wide">GAEDKE</span>
-            <span className="text-[10px] text-zinc-400 font-medium">CONSTRUCTION LLC</span>
+            <span className="font-bold leading-tight tracking-wide text-white">GAEDKE</span>
+            <span className="text-[10px] font-medium text-zinc-400">CONSTRUCTION LLC</span>
           </div>
         </div>
-        <div className="w-8"></div>
-      </div>
+        <div className="w-8" />
+      </header>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'bot' && <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center shrink-0"><Bot size={18} className="text-black" /></div>}
-            
-            <div className={`max-w-[85%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-zinc-800 text-white rounded-tr-none' : 'bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-tl-none'}`}>
-              {msg.content}
-              {msg.type === 'image' && msg.fileUrl && <img src={msg.fileUrl} alt="Upload" className="mt-2 rounded-lg max-h-48 object-cover border border-zinc-700" />}
-              {msg.type === 'file' && <div className="mt-2 flex items-center gap-3 bg-black/20 p-3 rounded border border-zinc-700"><FileText className="text-amber-500" /><span className="text-sm underline">{msg.fileName}</span></div>}
+      {/* Chat messages */}
+      <div className="space-y-6 overflow-y-auto flex-1 p-4">
+        {messages.map((msg, idx) => {
+          const isBotMessage = msg.role === 'bot';
+          return (
+            <div
+              key={`${idx}-${msg.role}`}
+              className={`flex gap-3 ${isBotMessage ? 'justify-start' : 'justify-end'}`}
+            >
+              {isBotMessage && (
+                <div className="flex shrink-0 items-center justify-center rounded-full bg-amber-500 h-8 w-8">
+                  <Bot size={18} className="text-black" />
+                </div>
+              )}
+
+              <div
+                className={`max-w-[85%] rounded-2xl p-4 ${
+                  isBotMessage
+                    ? 'rounded-tl-none border border-zinc-800 bg-zinc-900 text-zinc-200'
+                    : 'rounded-tr-none bg-zinc-800 text-white'
+                }`}
+              >
+                <p>{msg.content}</p>
+                {msg.type === 'image' && msg.fileUrl && (
+                  <img
+                    src={msg.fileUrl}
+                    alt="User uploaded image"
+                    className="mt-2 max-h-48 rounded-lg border border-zinc-700 object-cover"
+                  />
+                )}
+                {msg.type === 'file' && (
+                  <div className="mt-2 flex items-center gap-3 rounded border border-zinc-700 bg-black/20 p-3">
+                    <FileText className="text-amber-500" />
+                    <span className="text-sm underline">{msg.fileName}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {isTyping && (
+          <div className="flex gap-3">
+            <div className="flex items-center justify-center rounded-full bg-amber-500 h-8 w-8">
+              <Bot size={18} className="text-black" />
+            </div>
+            <div className="rounded-2xl rounded-tl-none border border-zinc-800 bg-zinc-900 p-4">
+              <Loader2 size={16} className="animate-spin text-zinc-500" />
             </div>
           </div>
-        ))}
-        {isTyping && <div className="flex gap-3"><div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center"><Bot size={18} className="text-black" /></div><div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl rounded-tl-none"><Loader2 className="animate-spin text-zinc-500" size={16} /></div></div>}
+        )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* --- NEW INPUT AREA WITH 3 ICONS --- */}
-      <div className="bg-zinc-900 border-t border-zinc-800 p-3 pb-6">
-        <form onSubmit={handleSend} className="max-w-4xl mx-auto flex items-end gap-2">
-          
-          {/* 1. CAMERA BUTTON (Blue accent to match logo) */}
-          <label className="p-3 text-zinc-400 hover:text-blue-500 cursor-pointer bg-zinc-950 rounded-full border border-zinc-800 transition-colors">
+      {/* Input area */}
+      <div className="border-t border-zinc-800 bg-zinc-900 p-3 pb-6">
+        <form onSubmit={handleSend} className="mx-auto flex max-w-4xl items-end gap-2">
+          {/* Camera button */}
+          <label className="cursor-pointer rounded-full border border-zinc-800 bg-zinc-950 p-3 text-zinc-400 transition-colors hover:text-blue-500">
             <Camera size={20} />
-            {/* capture="environment" forces the rear camera on mobile */}
-            <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'camera')} accept="image/*" capture="environment" />
+            <input
+              type="file"
+              className="hidden"
+              onChange={(e) => handleFileUpload(e, 'camera')}
+              accept="image/*"
+              capture="environment"
+              aria-label="Capture photo"
+            />
           </label>
 
-          {/* 2. GALLERY BUTTON */}
-          <label className="p-3 text-zinc-400 hover:text-amber-500 cursor-pointer bg-zinc-950 rounded-full border border-zinc-800 transition-colors">
+          {/* Gallery button */}
+          <label className="cursor-pointer rounded-full border border-zinc-800 bg-zinc-950 p-3 text-zinc-400 transition-colors hover:text-amber-500">
             <ImageIcon size={20} />
-            <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'image')} accept="image/*" />
+            <input
+              type="file"
+              className="hidden"
+              onChange={(e) => handleFileUpload(e, 'image')}
+              accept="image/*"
+              aria-label="Upload image"
+            />
           </label>
 
-          {/* 3. FILE BUTTON */}
-          <label className="p-3 text-zinc-400 hover:text-white cursor-pointer bg-zinc-950 rounded-full border border-zinc-800 transition-colors">
+          {/* File button */}
+          <label className="cursor-pointer rounded-full border border-zinc-800 bg-zinc-950 p-3 text-zinc-400 transition-colors hover:text-white">
             <FolderOpen size={20} />
-            <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'file')} accept=".pdf,.doc,.docx" />
+            <input
+              type="file"
+              className="hidden"
+              onChange={(e) => handleFileUpload(e, 'file')}
+              accept=".pdf,.doc,.docx"
+              aria-label="Upload document"
+            />
           </label>
 
-          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type message..." className="flex-1 bg-zinc-950 border border-zinc-800 text-white rounded-2xl px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors h-[50px]" />
-          
-          <button type="submit" className="h-[50px] w-[50px] bg-amber-500 text-black rounded-full hover:bg-amber-400 transition-colors flex items-center justify-center font-bold disabled:opacity-50 shrink-0"><Send size={20} /></button>
+          {/* Message input */}
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type message..."
+            className="h-[50px] flex-1 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white transition-colors focus:border-amber-500 focus:outline-none"
+            aria-label="Chat message input"
+          />
+
+          {/* Send button */}
+          <button
+            type="submit"
+            disabled={isTyping || !input.trim()}
+            className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-amber-500 font-bold text-black transition-colors hover:bg-amber-400 disabled:opacity-50"
+            aria-label="Send message"
+          >
+            <Send size={20} />
+          </button>
         </form>
       </div>
     </main>

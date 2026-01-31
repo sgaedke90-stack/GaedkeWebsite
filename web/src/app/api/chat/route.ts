@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 
 export const runtime = "nodejs";
 
-const SYSTEM_PROMPT = `You are Sean Gaedke, owner of Gaedke Construction in MN.`;
+const SYSTEM_PROMPT = "You are Sean Gaedke, owner of Gaedke Construction in MN.";
 
 const MODEL_FALLBACKS = [
   "gemini-3-flash-preview",
@@ -13,75 +13,155 @@ const MODEL_FALLBACKS = [
   "gemini-1.5-pro",
   "chat-bison",
   "text-bison",
-];
+] as const;
 
-export async function POST(req: Request) {
+interface ChatMessage {
+  readonly role: "assistant" | "user";
+  readonly content: string;
+}
+
+interface ChatResponse {
+  readonly message?: string;
+  readonly model?: string;
+  readonly quoteComplete?: boolean;
+  readonly leadSent?: boolean;
+  readonly leadError?: string;
+  readonly error?: string;
+}
+
+export async function POST(req: Request): Promise<NextResponse<ChatResponse>> {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: "Missing API Key" }, { status: 500 });
+    const apiKey =
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+      process.env.GOOGLE_API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Missing API Key" },
+        { status: 500 }
+      );
+    }
 
     const ai = new GoogleGenAI({ apiKey });
 
-    const body = await req.json();
+    const body = (await req.json()) as { messages?: unknown };
     const messages = Array.isArray(body?.messages) ? body.messages : [];
-    type ChatMessage = { role: string; content: string };
-    const normalized: ChatMessage[] = messages.map((m: any) => ({
-      role: m.role === "assistant" ? "assistant" : "user",
-      content: String(m.content),
-    }));
 
-    // Compose a single content string for generateContent
-    const contents = [SYSTEM_PROMPT, ...normalized.map((m: ChatMessage) => `${m.role.toUpperCase()}: ${m.content}`)].join("\n\n");
+    const normalized: ChatMessage[] = (messages as unknown[]).map(
+      (m: unknown) => {
+        const msg = m as { role?: string; content?: string };
+        return {
+          role: (msg.role === "assistant" ? "assistant" : "user") as const,
+          content: String(msg.content ?? ""),
+        };
+      }
+    );
 
-    let lastError: any = null;
+    const contents = [
+      SYSTEM_PROMPT,
+      ...normalized.map((m) => `${m.role.toUpperCase()}: ${m.content}`),
+    ].join("\n\n");
+
+    let lastError: unknown = null;
     for (const modelId of MODEL_FALLBACKS) {
       try {
-        const result = await ai.models.generateContent({
+        const result = (await ai.models.generateContent({
           model: modelId,
           contents,
-        });
+        })) as { text?: string; output?: Array<{ content?: Array<{ text?: string }> }> };
 
-        // Robust extraction of returned text (handle different response shapes)
-        const text = (result as any).text ?? (result as any).output?.[0]?.content?.[0]?.text ?? JSON.stringify(result);
+        const text =
+          result.text ??
+          result.output?.[0]?.content?.[0]?.text ??
+          JSON.stringify(result);
 
-        // Detect whether this response looks like a finished quote so we can send server-side email
-        const quoteIndicatorRegex = /(\$\s*\d{1,3}[\d,\.]*|\b(total|estimate|quotation|quote|subtotal|grand total|price|estimated)\b)/i;
+        const quoteIndicatorRegex =
+          /(\$\s*\d{1,3}[\d,\.]*|\b(total|estimate|quotation|quote|subtotal|grand total|price|estimated)\b)/i;
         const quoteComplete = quoteIndicatorRegex.test(String(text));
 
         if (quoteComplete) {
-          // Build summary/transcript here and send via internal helper
-          const clientName = normalized[1]?.role === 'user' ? normalized[1].content : 'Unknown Client';
-          const phoneMatch = normalized.map(m => m.content).join(' ').match(/(\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4})/);
-          const clientPhone = phoneMatch ? phoneMatch[0] : 'Not detected';
-          const dateKeywords = ["immediately", "month", "week", "year", "asap", "spring", "summer", "fall", "winter"];
-          const timeline = normalized.find(m => m.role === 'user' && dateKeywords.some(k => m.content.toLowerCase().includes(k)))?.content || 'TBD';
+          const clientName =
+            normalized[1]?.role === "user" ? normalized[1].content : "Unknown Client";
+          const phoneMatch = normalized
+            .map((m) => m.content)
+            .join(" ")
+            .match(/(\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4})/);
+          const clientPhone = phoneMatch ? phoneMatch[0] : "Not detected";
+
+          const dateKeywords = [
+            "immediately",
+            "month",
+            "week",
+            "year",
+            "asap",
+            "spring",
+            "summer",
+            "fall",
+            "winter",
+          ];
+          const timeline =
+            normalized.find(
+              (m) =>
+                m.role === "user" &&
+                dateKeywords.some((k) => m.content.toLowerCase().includes(k))
+            )?.content || "TBD";
 
           const summary = `========================================\n🚀 NEW LEAD: PROJECT BRIEF\n========================================\n👤 NAME:       ${clientName}\n📱 PHONE:      ${clientPhone}\n📅 START DATE: ${timeline}\n`;
-          const transcript = normalized.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+          const transcript = normalized
+            .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+            .join("\n\n");
 
           try {
-            // dynamic import so we don't import nodemailer in environments that don't need it
-            const { sendLead } = await import('../../../lib/sendLead');
-            await sendLead({ summary, transcript, model: modelId, source: 'chat-api' });
-            return NextResponse.json({ message: text, model: modelId, quoteComplete: true, leadSent: true });
-          } catch (err: any) {
-            return NextResponse.json({ message: text, model: modelId, quoteComplete: true, leadSent: false, leadError: err.message });
+            const { sendLead } = await import("../../../lib/sendLead");
+            await sendLead({ summary, transcript, model: modelId, source: "chat-api" });
+            return NextResponse.json({
+              message: text,
+              model: modelId,
+              quoteComplete: true,
+              leadSent: true,
+            });
+          } catch (err: unknown) {
+            const error = err instanceof Error ? err.message : String(err);
+            return NextResponse.json({
+              message: text,
+              model: modelId,
+              quoteComplete: true,
+              leadSent: false,
+              leadError: error,
+            });
           }
         }
 
-        return NextResponse.json({ message: text, model: modelId, quoteComplete });
-      } catch (err: any) {
+        return NextResponse.json({
+          message: text,
+          model: modelId,
+          quoteComplete,
+        });
+      } catch (err: unknown) {
         lastError = err;
-        const msg = String(err?.message || "").toLowerCase();
-        if (msg.includes("not found") || msg.includes("not supported") || msg.includes("generatecontent")) {
+        const msg = String((err as Error)?.message ?? "").toLowerCase();
+        if (
+          msg.includes("not found") ||
+          msg.includes("not supported") ||
+          msg.includes("generatecontent")
+        ) {
           continue;
         }
         throw err;
       }
     }
 
-    return NextResponse.json({ error: lastError?.message || "No available model" }, { status: 500 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json(
+      {
+        error:
+          (lastError instanceof Error ? lastError.message : String(lastError)) ||
+          "No available model",
+      },
+      { status: 500 }
+    );
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error }, { status: 500 });
   }
 }

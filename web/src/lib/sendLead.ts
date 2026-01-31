@@ -2,25 +2,42 @@ import fs from 'fs';
 import path from 'path';
 import nodemailer from 'nodemailer';
 
-export type LeadPayload = {
-  summary: string;
-  transcript: string;
-  model?: string;
-  source?: string;
-};
+export interface LeadPayload {
+  readonly summary: string;
+  readonly transcript: string;
+  readonly model?: string;
+  readonly source?: string;
+}
 
 const LOG_DIR = path.resolve(process.cwd(), 'web', 'data');
 const LOG_FILE = path.join(LOG_DIR, 'quote-log.jsonl');
 
-function ensureLogDir() {
+const ensureLogDir = (): void => {
   try {
     fs.mkdirSync(LOG_DIR, { recursive: true });
-  } catch (err) {
-    // ignore
+  } catch {
+    // Ignore directory creation errors
   }
+};
+
+interface SendMailResult {
+  readonly messageId?: string;
 }
 
-async function sendEmailSMTP(to: string, subject: string, body: string) {
+interface LogEntry {
+  readonly timestamp: string;
+  readonly to: string;
+  readonly subject: string;
+  readonly model: string | null;
+  readonly source: string | null;
+  readonly summary: string;
+  readonly transcript: string;
+  readonly ok: boolean;
+  readonly error?: string;
+  readonly info?: SendMailResult;
+}
+
+const sendEmailSMTP = async (to: string, subject: string, body: string): Promise<SendMailResult> => {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || '587');
   const user = process.env.SMTP_USER;
@@ -44,10 +61,10 @@ async function sendEmailSMTP(to: string, subject: string, body: string) {
     text: body,
   });
 
-  return info;
-}
+  return { messageId: (info as SendMailResult).messageId };
+};
 
-export async function sendLead(payload: LeadPayload) {
+export const sendLead = async (payload: LeadPayload): Promise<{ readonly ok: true }> => {
   const to = process.env.LEAD_EMAIL_TO || 'Sgaedke90@gmail.com';
   const subject = `New Smart Quote from Website (${new Date().toISOString()})`;
   const body = `${payload.summary}\n\n${payload.transcript}\n\nModel: ${payload.model || 'unknown'}\nSource: ${payload.source || 'web'}`;
@@ -55,7 +72,7 @@ export async function sendLead(payload: LeadPayload) {
   const timestamp = new Date().toISOString();
   ensureLogDir();
 
-  const logEntry: any = {
+  const logEntry: LogEntry = {
     timestamp,
     to,
     subject,
@@ -64,27 +81,23 @@ export async function sendLead(payload: LeadPayload) {
     summary: payload.summary,
     transcript: payload.transcript,
     ok: false,
-    error: null,
   };
 
   try {
     const info = await sendEmailSMTP(to, subject, body);
-    logEntry.ok = true;
-    logEntry.info = { messageId: (info as any).messageId };
-  } catch (err: any) {
-    logEntry.ok = false;
-    logEntry.error = String(err?.message ?? err);
+    const successEntry: LogEntry = { ...logEntry, ok: true, info };
+    fs.appendFileSync(LOG_FILE, JSON.stringify(successEntry) + '\n');
+    return { ok: true };
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err.message : String(err);
+    const failureEntry: LogEntry = { ...logEntry, ok: false, error };
+
+    try {
+      fs.appendFileSync(LOG_FILE, JSON.stringify(failureEntry) + '\n');
+    } catch (logErr) {
+      console.error('Failed to write lead log:', logErr);
+    }
+
+    throw new Error(error || 'Failed to send lead email');
   }
-
-  // Append to log file as JSONL
-  try {
-    fs.appendFileSync(LOG_FILE, JSON.stringify(logEntry) + '\n');
-  } catch (err) {
-    // If file write fails, preserve in-memory (but do not throw)
-    console.error('Failed to write lead log:', err);
-  }
-
-  if (!logEntry.ok) throw new Error(logEntry.error || 'Failed to send lead email');
-
-  return { ok: true };
-}
+};
