@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, FormEvent, ChangeEvent } from 'react';
 import Image from "next/image";
-import { Send, ArrowLeft, Bot, Loader2, FileText, Image as ImageIcon, Camera, FolderOpen } from "lucide-react";
+import { Send, ArrowLeft, Bot, Loader2, FileText, Image as ImageIcon, Camera, FolderOpen, Check, X } from "lucide-react";
 import Link from "next/link";
 import emailjs from '@emailjs/browser';
 
@@ -14,14 +14,33 @@ interface Message {
   readonly type?: MessageType;
   readonly fileUrl?: string;
   readonly fileName?: string;
+  readonly isVerification?: boolean;
+}
+
+interface LeadData {
+  readonly name: string;
+  readonly phone: string;
+  readonly address: string;
+  readonly projectScope: string;
+  readonly aiEstimate: string;
+  readonly attachments: readonly Message[];
 }
 
 export default function ChatQuotePage(): JSX.Element {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'bot', content: "Hello! I'm the Gaedke Construction AI assistant. To start, what is your first and last name?" }
+    { role: 'bot', content: "Hello! I'm the Gaedke Construction AI assistant. Let's gather some information for your project quote. First, what is your full name?" }
   ]);
   const [input, setInput] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [leadData, setLeadData] = useState<LeadData>({
+    name: '',
+    phone: '',
+    address: '',
+    projectScope: '',
+    aiEstimate: '',
+    attachments: [],
+  });
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,42 +48,50 @@ export default function ChatQuotePage(): JSX.Element {
   }, [messages, isTyping]);
 
   const generateLeadSummary = useCallback((): string => {
-    const clientName = messages[1]?.role === 'user' ? messages[1].content : 'Unknown Client';
-    const phoneMatch = messages.map((m) => m.content).join(' ').match(/(\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4})/);
-    const clientPhone = phoneMatch ? phoneMatch[0] : 'Not detected';
+    const emailBody = `
+QUOTE READY - NEW LEAD FROM WEBSITE
 
-    const dateKeywords: readonly string[] = ['immediately', 'month', 'week', 'year', 'asap', 'spring', 'summer', 'fall', 'winter'];
-    const timeline = messages.find((m) => m.role === 'user' && dateKeywords.some((k) => m.content.toLowerCase().includes(k)))?.content || 'TBD';
+═══════════════════════════════════════════════════════════════════════════════
 
-    return `
-========================================
-🚀 NEW LEAD: PROJECT BRIEF
-========================================
-👤 NAME:       ${clientName}
-📱 PHONE:      ${clientPhone}
-📅 START DATE: ${timeline}
-📂 FILES:      ${messages.filter((m) => m.type === 'image').length} Photos, ${messages.filter((m) => m.type === 'video').length} Videos
-----------------------------------------
-FULL CHAT TRANSCRIPT BELOW:
-----------------------------------------
+CLIENT INFO:
+  Name:     ${leadData.name || 'Not provided'}
+  Phone:    ${leadData.phone || 'Not provided'}
+  Address:  ${leadData.address || 'Not provided'}
+
+PROJECT SCOPE:
+  ${leadData.projectScope || 'General consultation'}
+
+AI ESTIMATE PROVIDED TO CLIENT:
+  ${leadData.aiEstimate || 'No specific estimate mentioned'}
+
+ATTACHMENTS:
+  📸 Images: ${messages.filter((m) => m.type === 'image').length}
+  📄 Files:  ${messages.filter((m) => m.type === 'file').length}
+
+═══════════════════════════════════════════════════════════════════════════════
+
+FULL CONVERSATION TRANSCRIPT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     `;
-  }, [messages]);
+    return emailBody;
+  }, [leadData, messages]);
 
   const sendToOwner = useCallback(async (): Promise<void> => {
     const summary = generateLeadSummary();
     const transcript = messages
+      .filter((m) => m.role !== 'bot' || !m.isVerification)
       .map((m) => {
         if (m.type === 'image') return '[📸 PHOTO UPLOADED]';
         if (m.type === 'video') return '[🎥 VIDEO UPLOADED]';
-        if (m.type === 'file') return `[📄 FILE UPLOADED: ${m.fileName}]`;
-        return `${m.role.toUpperCase()}: ${m.content}`;
+        if (m.type === 'file') return `[📄 FILE: ${m.fileName}]`;
+        return `${m.role === 'bot' ? 'ASSISTANT' : 'CLIENT'}: ${m.content}`;
       })
       .join('\n\n');
 
     const fullEmailBody = summary + transcript;
 
     const templateParams = {
-      from_name: messages[1]?.content || 'New Lead',
+      from_name: leadData.name || 'New Lead',
       message: fullEmailBody,
     };
 
@@ -75,15 +102,45 @@ FULL CHAT TRANSCRIPT BELOW:
         templateParams,
         '1zDp7GlNHepyKQ7xf'
       );
-      console.log('Email sent successfully');
+      console.log('✅ Email sent successfully');
     } catch (error) {
-      console.error('Email failed:', error);
+      console.error('❌ Email send failed:', error);
     }
-  }, [messages, generateLeadSummary]);
+  }, [leadData, generateLeadSummary, messages]);
 
   const handleSend = useCallback(async (e?: FormEvent<HTMLFormElement>): Promise<void> => {
     e?.preventDefault();
     if (isTyping || !input.trim()) return;
+
+    // Handle verification responses
+    if (isVerifying) {
+      if (input.toLowerCase().includes('yes') || input.toLowerCase().includes('correct') || input.toLowerCase().includes('looks good')) {
+        setMessages((prev) => [...prev, { role: 'user', content: input }]);
+        setInput('');
+        setIsVerifying(false);
+        setIsTyping(true);
+
+        // Send email silently
+        await sendToOwner();
+
+        // Show confirmation
+        setTimeout(() => {
+          setIsTyping(false);
+          setMessages((prev) => [
+            ...prev,
+            { role: 'bot', content: '✅ Perfect! I\'ve sent your project details to Sean. He\'ll review everything and reach out to you soon at the phone number you provided.' },
+          ]);
+        }, 500);
+      } else {
+        setMessages((prev) => [...prev, { role: 'user', content: input }]);
+        setInput('');
+        setMessages((prev) => [
+          ...prev,
+          { role: 'bot', content: 'What would you like me to correct or add?' },
+        ]);
+      }
+      return;
+    }
 
     const newMessage: Message = { role: 'user', content: input };
     const newMessages: Message[] = [...messages, newMessage];
@@ -91,6 +148,92 @@ FULL CHAT TRANSCRIPT BELOW:
     setInput('');
     setIsTyping(true);
 
+    // Extract data based on conversation flow
+    const updateData = (key: keyof LeadData, value: string) => {
+      setLeadData((prev) => ({ ...prev, [key]: value }));
+    };
+
+    // Simple data extraction from user messages
+    const messageCount = newMessages.filter((m) => m.role === 'user').length;
+    if (messageCount === 1) {
+      updateData('name', input);
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages((prev) => [...prev, { role: 'bot', content: 'Thanks! What\'s your phone number?' }]);
+      }, 300);
+      return;
+    } else if (messageCount === 2) {
+      const phoneRegex = /(\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4})/;
+      const phoneMatch = input.match(phoneRegex);
+      if (phoneMatch) {
+        updateData('phone', phoneMatch[0]);
+        setTimeout(() => {
+          setIsTyping(false);
+          setMessages((prev) => [...prev, { role: 'bot', content: 'Perfect! What\'s the address of your project location?' }]);
+        }, 300);
+      } else {
+        setIsTyping(false);
+        setMessages((prev) => [...prev, { role: 'bot', content: 'I need a valid phone number. Could you provide that again?' }]);
+      }
+      return;
+    } else if (messageCount === 3) {
+      updateData('address', input);
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'bot',
+            content: 'Great! Now, can you briefly describe the project? (e.g., "Kitchen remodel", "Basement finish", "Deck construction")',
+          },
+        ]);
+      }, 300);
+      return;
+    } else if (messageCount === 4) {
+      updateData('projectScope', input);
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          { role: 'bot', content: 'Do you have any project plans, sketches, or photos of the area you\'d like to include? (You can upload them now or skip this step)' },
+        ]);
+      }, 300);
+      return;
+    } else if (messageCount === 5 && !input.toLowerCase().includes('skip') && !input.toLowerCase().includes('no')) {
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages((prev) => [...prev, { role: 'bot', content: 'Use the buttons below to upload files, or just type "done" when you\'re finished.' }]);
+      }, 300);
+      return;
+    } else if (messageCount >= 5 && (input.toLowerCase().includes('done') || input.toLowerCase().includes('skip'))) {
+      setTimeout(() => {
+        setIsTyping(false);
+        // Show verification
+        setIsVerifying(true);
+        const verificationMsg = `
+Here is what I have for your project. Does this all look correct, or is there anything else you'd like me to add for Sean?
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PROJECT SUMMARY
+
+Customer: ${leadData.name}
+Phone: ${leadData.phone}
+Location: ${leadData.address}
+Project: ${leadData.projectScope}
+Attachments: ${messages.filter((m) => m.type === 'image').length} photos, ${messages.filter((m) => m.type === 'file').length} files
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Reply "Yes" to confirm and send to Sean, or tell me what to change.
+        `;
+        setMessages((prev) => [
+          ...prev,
+          { role: 'bot', content: verificationMsg, isVerification: true },
+        ]);
+      }, 300);
+      return;
+    }
+
+    // Default fallback for additional messages
     try {
       const apiMessages = newMessages.map((m) => ({
         role: m.role === 'bot' ? 'assistant' : 'user',
@@ -106,9 +249,6 @@ FULL CHAT TRANSCRIPT BELOW:
       const data = (await response.json()) as {
         message?: string;
         error?: string;
-        quoteComplete?: boolean;
-        leadSent?: boolean;
-        leadError?: string;
       };
 
       setIsTyping(false);
@@ -118,28 +258,17 @@ FULL CHAT TRANSCRIPT BELOW:
       }
 
       setMessages((prev) => [...prev, { role: 'bot', content: data.message as string }]);
-
-      if (data.quoteComplete) {
-        if (data.leadSent) {
-          setMessages((prev) => [...prev, { role: 'bot', content: '✅ Quote has been emailed to Sean.' }]);
-        } else {
-          console.warn('Server lead send failed:', data.leadError);
-          await sendToOwner();
-          setMessages((prev) => [...prev, { role: 'bot', content: "I'm sending your project details to Sean now." }]);
-        }
-      } else if (data.message.includes('$')) {
-        await sendToOwner();
-      }
+      updateData('aiEstimate', data.message as string);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Chat error:', errorMessage);
       setIsTyping(false);
       setMessages((prev) => [
         ...prev,
-        { role: 'bot', content: "That's a great question. Please text Sean directly at (763) 318-0605 so he can give you a specific answer." },
+        { role: 'bot', content: 'That\'s a great question. Please text Sean directly at (763) 318-0605 so he can give you a specific answer.' },
       ]);
     }
-  }, [isTyping, input, messages, sendToOwner]);
+  }, [isTyping, input, messages, isVerifying, leadData, sendToOwner]);
   const handleFileUpload = useCallback(
     async (e: ChangeEvent<HTMLInputElement>, specificType: 'camera' | 'image' | 'file'): Promise<void> => {
       const file = e.target.files?.[0];
