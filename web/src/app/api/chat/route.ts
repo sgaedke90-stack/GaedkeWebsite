@@ -51,8 +51,9 @@ export async function POST(req: Request): Promise<NextResponse<ChatResponse>> {
     const normalized: ChatMessage[] = (messages as unknown[]).map(
       (m: unknown) => {
         const msg = m as { role?: string; content?: string };
+        const role = msg.role === "assistant" ? "assistant" : "user";
         return {
-          role: (msg.role === "assistant" ? "assistant" : "user") as const,
+          role,
           content: String(msg.content ?? ""),
         };
       }

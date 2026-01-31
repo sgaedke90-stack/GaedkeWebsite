@@ -93,7 +93,7 @@ FULL CHAT TRANSCRIPT BELOW:
 
     try {
       const apiMessages = newMessages.map((m) => ({
-        role: m.role === 'bot' ? 'assistant' : 'user' as const,
+        role: m.role === 'bot' ? 'assistant' : 'user',
         content: m.content,
       }));
 
