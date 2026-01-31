@@ -17,7 +17,7 @@ interface Message {
 }
 
 export default function ChatQuotePage(): JSX.Element {
-  const [messages, setMessages] = useState<readonly Message[]>([
+  const [messages, setMessages] = useState<Message[]>([
     { role: 'bot', content: "Hello! I'm the Gaedke Construction AI assistant. To start, what is your first and last name?" }
   ]);
   const [input, setInput] = useState<string>('');
@@ -86,8 +86,8 @@ FULL CHAT TRANSCRIPT BELOW:
     if (isTyping || !input.trim()) return;
 
     const newMessage: Message = { role: 'user', content: input };
-    const newMessages = [...messages, newMessage] as const;
-    setMessages(newMessages as Message[]);
+    const newMessages: Message[] = [...messages, newMessage];
+    setMessages(newMessages);
     setInput('');
     setIsTyping(true);
 
@@ -117,7 +117,7 @@ FULL CHAT TRANSCRIPT BELOW:
         throw new Error(data.error || 'Unexpected server response');
       }
 
-      setMessages((prev) => [...prev, { role: 'bot', content: data.message }]);
+      setMessages((prev) => [...prev, { role: 'bot', content: data.message as string }]);
 
       if (data.quoteComplete) {
         if (data.leadSent) {
@@ -160,12 +160,10 @@ FULL CHAT TRANSCRIPT BELOW:
       setMessages((prev) => [...prev, newMessage]);
       setIsTyping(true);
 
-      const timer = setTimeout(() => {
+      setTimeout(() => {
         setIsTyping(false);
         setMessages((prev) => [...prev, { role: 'bot', content: 'Received! That visual helps a lot. When are you hoping to start work?' }]);
       }, 2000);
-
-      return () => clearTimeout(timer);
     },
     []
   );
